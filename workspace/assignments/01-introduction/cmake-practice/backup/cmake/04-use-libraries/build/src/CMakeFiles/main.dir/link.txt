@@ -1,0 +1,1 @@
+/usr/bin/c++      CMakeFiles/main.dir/main.o  -o ../bin/main -rdynamic /tmp/lib/libhello.so -Wl,-rpath,/tmp/lib 

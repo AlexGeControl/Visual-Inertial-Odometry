@@ -1,0 +1,16 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/alexge/Workspace/Distributed-System/Spark/01-ML-theory/03-robotics/05-self-driving-car/05-visual-slam/01-introduction/cmake-practice/backup/cmake/03-build-libraries/lib/hello.cpp
+hello.h
+/home/alexge/Workspace/Distributed-System/Spark/01-ML-theory/03-robotics/05-self-driving-car/05-visual-slam/01-introduction/cmake-practice/backup/cmake/03-build-libraries/lib/hello.h
+iostream
+-
+
+/home/alexge/Workspace/Distributed-System/Spark/01-ML-theory/03-robotics/05-self-driving-car/05-visual-slam/01-introduction/cmake-practice/backup/cmake/03-build-libraries/lib/hello.h
+

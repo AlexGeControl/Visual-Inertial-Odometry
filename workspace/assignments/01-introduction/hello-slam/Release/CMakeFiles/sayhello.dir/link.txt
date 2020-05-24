@@ -1,0 +1,1 @@
+/usr/bin/c++   -O3 -DNDEBUG   CMakeFiles/sayhello.dir/useHello.cpp.o CMakeFiles/sayhello.dir/src/hello.cpp.o  -o bin/sayhello 

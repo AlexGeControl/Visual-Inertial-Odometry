@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "ratio": "cpp",
+        "system_error": "cpp",
+        "type_traits": "cpp",
+        "core": "cpp",
+        "iosfwd": "cpp",
+        "vector": "cpp"
+    }
+}

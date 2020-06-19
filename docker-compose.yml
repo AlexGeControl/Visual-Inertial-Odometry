@@ -18,3 +18,10 @@ services:
       - 45901:5900
       # supervisord admin:
       - 49001:9001
+  visual-inertial-odometry-gpu:
+    build:
+      context: .
+      dockerfile: gpu.Dockerfile
+      network: host
+    image: shenlanxueyuan/visual-inertial-odometry-gpu:latest
+    container_name: visual-inertial-odometry-gpu

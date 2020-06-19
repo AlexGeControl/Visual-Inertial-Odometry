@@ -48,7 +48,7 @@ Config port mappings for supervisord monitor and VNC client access in **docker-c
 # for cpu instance -- use docker-compose
 docker-compose up workspace-vnc-cpu
 # for gpu instance -- use docker run
-
+./launch-visual-inertial-odometry-gpu.sh
 ```
 
 ### Health Check

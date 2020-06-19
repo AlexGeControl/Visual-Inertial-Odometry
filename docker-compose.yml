@@ -1,0 +1,20 @@
+version: '3.4'
+services:
+  visual-inertial-odometry-cpu:
+    build:
+      context: .
+      dockerfile: cpu.Dockerfile
+      network: host
+    image: shenlanxueyuan/visual-inertial-odometry-cpu:latest
+    container_name: visual-inertial-odometry-cpu
+    privileged: true
+    volumes:
+      # workspace:
+      - ${PWD}/workspace/assignments:/workspace/assignments
+      # data:
+      - ${PWD}/workspace/data:/workspace/data
+    ports:
+      # standard vnc client:
+      - 45901:5900
+      # supervisord admin:
+      - 49001:9001

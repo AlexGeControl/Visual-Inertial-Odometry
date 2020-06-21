@@ -13,6 +13,8 @@ services:
       - ${PWD}/workspace/assignments:/workspace/assignments
       # data:
       - ${PWD}/workspace/data:/workspace/data
+      # Sophus:
+      - ${PWD}/Sophus:/workspace/Sophus
     ports:
       # standard vnc client:
       - 45901:5900

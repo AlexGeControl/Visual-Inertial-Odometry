@@ -97,6 +97,16 @@ WORKDIR /tmp/installers
 RUN dpkg -i tini.deb && \
     apt-get clean
 
+# install sophus -- https://github.com/strasdat/Sophus:
+RUN git clone https://github.com/strasdat/Sophus.git -o Sophus && cd Sophus && \
+    mkdir build && cd build && \
+    # config:
+    cmake .. && \
+    # build:
+    make -j8 && \
+    # install:
+    make install
+
 # install ceres -- http://ceres-solver.org/installation.html:
 RUN tar zxf ceres-solver-1.14.0.tar.gz && \
     mkdir ceres-bin && cd ceres-bin && \

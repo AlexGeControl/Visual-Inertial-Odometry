@@ -13,9 +13,11 @@ add_definitions(-std=c++11)
 FIND_PACKAGE(OpenCV 3.4 REQUIRED)
 # b. Eigen 3:
 FIND_PACKAGE(Eigen3 REQUIRED)
-# c. Ceres:
+# c. Sophus:
+FIND_PACKAGE(Sophus REQUIRED)
+# d. Ceres:
 FIND_PACKAGE(Ceres REQUIRED)
-# d. g2o:
+# e. g2o:
 SET(g2o REQUIRED)
 
 ###########
@@ -27,6 +29,7 @@ SET(g2o REQUIRED)
 INCLUDE_DIRECTORIES(
     ${OPENCV_INCLUDE_DIR}
     ${EIGEN3_INCLUDE_DIR}
+    ${SOPHUS_INCLUDE_DIR}
     ${CERES_INCLUDE_DIR}
     ${G2O_INCLUDE_DIR}
 )
@@ -44,4 +47,14 @@ ADD_EXECUTABLE(orb_feature_matching 01-orb-feature-matching/compute_orb.cpp)
 TARGET_LINK_LIBRARIES(
     orb_feature_matching
     ${OpenCV_LIBS}
+)
+
+##
+## 2. essential matrix to relative pose
+##
+ADD_EXECUTABLE(essential_matrix_to_relative_pose 02-essential-matrix-to-pose/E2Rt.cpp)
+TARGET_LINK_LIBRARIES(
+    essential_matrix_to_relative_pose
+    ${EIGEN3_LIBS}
+    ${SOPHUS_LIBS}
 )

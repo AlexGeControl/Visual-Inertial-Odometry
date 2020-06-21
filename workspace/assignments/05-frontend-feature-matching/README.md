@@ -184,3 +184,93 @@ sys	0m0.786s
 Further optimization could be achieved by **Using KDTree for feature matching**. But the search tree should be adapted to work on bitset.
 
 ---
+
+### 2. Reconstruct Relative Pose from Essential Matrix
+### 2. 从 E 恢复 R, t
+
+The solution is available at (click to follow the link) [here](02-essential-matrix-to-pose/E2Rt.cpp)
+
+#### Implementation
+
+```c++
+    // SVD:
+    BDCSVD<Matrix3d> svd(E, Eigen::ComputeFullU|Eigen::ComputeFullV);
+    const MatrixXd &U = svd.matrixU();
+    const MatrixXd &V = svd.matrixV();
+    double sigma = (svd.singularValues()(0) + svd.singularValues()(1)) / 2.0;
+    DiagonalMatrix<double, 3> S(sigma, sigma, 0.0);
+
+    // rotation matrices:
+    Vector3d axis{0.0, 0.0, 1.0};
+    auto R_z_pos = AngleAxisd(+M_PI/2, axis).toRotationMatrix();
+    auto R_z_neg = AngleAxisd(-M_PI/2, axis).toRotationMatrix();
+
+    // set t1, t2, R1, R2 
+    Matrix3d t_wedge1 = U * R_z_pos * S * U.transpose();
+    Matrix3d t_wedge2 = U * R_z_neg * S * U.transpose();
+
+    Matrix3d R1 = U * R_z_pos.transpose() * V.transpose();
+    Matrix3d R2 = U * R_z_neg.transpose() * V.transpose();
+
+    // show results:
+    cout << "[Essential Matrix to Relative Pose]:" << endl;
+    cout << "\tR1 = \n" << R1 << endl;
+    cout << "\tt1 = \n" << +1.0 * Sophus::SO3d::vee(t_wedge1) << endl;
+    cout << "\tR2 = \n" << R1 << endl;
+    cout << "\tt2 = \n" << -1.0 * Sophus::SO3d::vee(t_wedge1) << endl;
+    cout << "\tR3 = \n" << R2 << endl;
+    cout << "\tt3 = \n" << +1.0 * Sophus::SO3d::vee(t_wedge2) << endl;
+    cout << "\tR4 = \n" << R2 << endl;
+    cout << "\tt4 = \n" << -1.0 * Sophus::SO3d::vee(t_wedge2) << endl;
+
+    // check t^R=E up to scale
+    Matrix3d tR = t_wedge1 * R1;
+    cout << "\t Reconstructed, from t^R =\n" << tR << endl;
+
+    // compute relative error:
+    double relative_error = 100.0 * (tR - E).norm() / E.norm();
+    cout << "\t Relative error, F-norm: " << relative_error << endl;
+```
+
+#### Result
+
+```bash
+[Essential Matrix to Relative Pose]:
+	R1 = 
+  -0.365887  -0.0584576    0.928822
+-0.00287462    0.998092   0.0616848
+   0.930655  -0.0198996    0.365356
+	t1 = 
+ -0.581301
+-0.0231206
+  0.401938
+	R2 = 
+  -0.365887  -0.0584576    0.928822
+-0.00287462    0.998092   0.0616848
+   0.930655  -0.0198996    0.365356
+	t2 = 
+ 0.581301
+0.0231206
+-0.401938
+	R3 = 
+ -0.998596  0.0516992 -0.0115267
+-0.0513961   -0.99836 -0.0252005
+ 0.0128107  0.0245727  -0.999616
+	t3 = 
+ 0.581301
+0.0231206
+-0.401938
+	R4 = 
+ -0.998596  0.0516992 -0.0115267
+-0.0513961   -0.99836 -0.0252005
+ 0.0128107  0.0245727  -0.999616
+	t4 = 
+ -0.581301
+-0.0231206
+  0.401938
+	 Reconstructed, from t^R =
+ -0.0203619   -0.400711  -0.0332407
+   0.393927   -0.035064    0.585711
+-0.00678849   -0.581543  -0.0143826
+	 Relative error, F-norm, %: 5.74042e-14
+```

@@ -176,9 +176,9 @@ The execution time is shown below. Here C++ `bitset` is used to replace `std::ve
 # run ORB feature matching:
 time ./orb_feature_matching 
 # time it:
-real	0m0.148s
-user	0m0.370s
-sys	0m0.694s
+real	0m0.167s
+user	0m0.322s
+sys	0m0.786s
 ```
 
 Further optimization could be achieved by **Using KDTree for feature matching**. But the search tree should be adapted to work on bitset.

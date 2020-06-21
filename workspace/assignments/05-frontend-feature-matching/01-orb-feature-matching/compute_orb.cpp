@@ -29,7 +29,7 @@ void computeAngle(const cv::Mat &image, vector<cv::KeyPoint> &keypoints);
  * @param [in] keypoints detected keypoints
  * @param [out] desc descriptor
  */
-typedef std::bitset<256> DescType;  // use bitset for better performance:
+typedef std::bitset<256 + 1> DescType;  // use bitset for better performance:
 void computeORBDesc(const cv::Mat &image, vector<cv::KeyPoint> &keypoints, vector<DescType> &desc);
 
 // TODO implement this function
@@ -133,7 +133,7 @@ void computeAngle(const cv::Mat &image, vector<cv::KeyPoint> &keypoints) {
             // calculate orientation:
             m10 /= m00;
             m01 /= m00;
-            keypoint.angle = static_cast<float>(
+            angle = static_cast<float>(
                 atan2(
                     static_cast<double>(m01), 
                     static_cast<double>(m10)
@@ -141,10 +141,10 @@ void computeAngle(const cv::Mat &image, vector<cv::KeyPoint> &keypoints) {
             );
 
             // convert to OpenCV angle:
-            keypoint.angle *= RADIUS_TO_DEGREE;
+            angle *= RADIUS_TO_DEGREE;
         }
 
-        keypoint.angle = 0.0f;
+        keypoint.angle = angle;
     }
 
     return;
@@ -416,15 +416,19 @@ void computeORBDesc(const cv::Mat &image, vector<cv::KeyPoint> &keypoints, vecto
     static const size_t N = 256;
     static const float DEGREE_TO_RADIAN = M_PI / 180.0;
 
+    int bad = 0;
+
+    desc.clear();
     for (auto &keypoint: keypoints) {
         DescType d;
         bool out_of_bound = false;
 
         // calculate descriptor:
+        d.reset();
         for (int i = 0; i < N; i++) {
             // get current ORB pattern:
-            int u_p{ORB_pattern[(i << 2) + 0]}, v_p{ORB_pattern[(i << 2) + 1]};
-            int u_q{ORB_pattern[(i << 2) + 2]}, v_q{ORB_pattern[(i << 2) + 3]};
+            int u_p{ORB_pattern[4*i + 0]}, v_p{ORB_pattern[4*i + 1]};
+            int u_q{ORB_pattern[4*i + 2]}, v_q{ORB_pattern[4*i + 3]};
 
             // get feature point orientation:
             double theta = keypoint.angle * DEGREE_TO_RADIAN;
@@ -444,19 +448,17 @@ void computeORBDesc(const cv::Mat &image, vector<cv::KeyPoint> &keypoints, vecto
                 // std::cout << "\t Pair" << i << std::endl;
                 d[i] = image.at<unsigned char>(y_p, x_p) > image.at<unsigned char>(y_q, x_q);
             } else {
-                out_of_bound = true;
+                ++bad;
+                d[N] = true;
                 break;
             }
         }
 
-        if (!out_of_bound) {
-            desc.push_back(d);
-        }
+        desc.push_back(d);
     }
 
     int total = keypoints.size();
-    int bad = keypoints.size() - desc.size();
-    cout << "bad/total: " << bad << "/" << total << endl;
+    std::cout << "bad/total: " << bad << "/" << total << std::endl;
     return;
 }
 
@@ -466,9 +468,15 @@ void bfMatch(const vector<DescType> &desc1, const vector<DescType> &desc2, vecto
     static const int D_MAX = 50;
 
     for (int i = 0; i < desc1.size(); ++i) {
+        // skip invalid descriptor:
+        if (desc1.at(i)[N]) continue;
+
         cv::DMatch match{i, 0, N};
 
-        for (int j = 0; j < desc2.size(); ++j) { 
+        for (int j = 0; j < desc2.size(); ++j) {
+            // skip invalid descriptor:
+            if (desc2.at(j)[N]) continue;
+
             int distance = (desc1.at(i) ^ desc2.at(j)).count();
 
             if (distance >= D_MAX) continue;
@@ -485,7 +493,7 @@ void bfMatch(const vector<DescType> &desc1, const vector<DescType> &desc2, vecto
     }
 
     for (auto &m: matches) {
-        cout << m.queryIdx << ", " << m.trainIdx << ", " << m.distance << endl;
+        // cout << m.queryIdx << ", " << m.trainIdx << ", " << m.distance << endl;
     }
 
     return;

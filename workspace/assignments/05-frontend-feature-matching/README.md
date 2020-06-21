@@ -274,3 +274,13 @@ The solution is available at (click to follow the link) [here](02-essential-matr
 -0.00678849   -0.581543  -0.0143826
 	 Relative error, F-norm, %: 5.74042e-14
 ```
+
+---
+
+### 3. Gaussian-Newton for PnP Pose Estimation
+### 3. 用 G-N 实现 Bundle Adjustment 中的位姿估计
+
+---
+
+### 4. ICP for Trajectory Alignment
+### 4. 用 ICP 实现轨迹对齐

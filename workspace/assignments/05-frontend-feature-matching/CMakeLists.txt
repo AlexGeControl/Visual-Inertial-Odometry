@@ -58,3 +58,13 @@ TARGET_LINK_LIBRARIES(
     ${EIGEN3_LIBS}
     ${SOPHUS_LIBS}
 )
+
+##
+## 3. PnP using Gaussian-Newton on se(3)
+##
+ADD_EXECUTABLE(pnp_gaussian_newton 03-pnp/GN-BA.cpp)
+TARGET_LINK_LIBRARIES(
+    pnp_gaussian_newton
+    ${EIGEN3_LIBS}
+    ${SOPHUS_LIBS}
+)

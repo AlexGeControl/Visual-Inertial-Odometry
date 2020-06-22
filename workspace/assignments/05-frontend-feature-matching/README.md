@@ -280,6 +280,146 @@ The solution is available at (click to follow the link) [here](02-essential-matr
 ### 3. Gaussian-Newton for PnP Pose Estimation
 ### 3. 用 G-N 实现 Bundle Adjustment 中的位姿估计
 
+The solution is available at (click to follow the link) [here](03-pnp/GN-BA.cpp)
+
+#### Implementation
+
+```c++
+    const size_t N = p3d.size();
+    int iterations = 100;
+    cout << "[PnP G-N]: Num. of points: " << N << ". Max Iternation:" << iterations << endl;
+
+    // init estimated pose
+    double cost{0.0}, lastCost{std::numeric_limits<double>::max()};
+    Sophus::SE3<double, Eigen::AutoAlign> T_esti; 
+
+    for (int iter = 0; iter < iterations; iter++) {
+        Matrix<double, 6, 6> H = Matrix<double, 6, 6>::Zero();
+        Vector6d b = Vector6d::Zero();
+
+        cost = 0;
+
+        for (int i = 0; i < N; i++) {
+            // update cost:
+            Vector3d P = T_esti.rotationMatrix()*p3d.at(i) + T_esti.translation();
+            Vector3d P_esti = K*P;
+            Vector2d p_esti{P_esti(0)/P_esti(2), P_esti(1)/P_esti(2)};
+
+            Vector2d e = p2d.at(i) - p_esti;
+
+            cost += 0.5*e.squaredNorm();
+
+	        // compute jacobian
+            Matrix<double, 2, 6> J;
+            
+            double x{P(0)}, y{P(1)}, z{P(2)};
+
+            J(0, 0) = +fx/z;
+            J(0, 1) = 0.0;
+            J(0, 2) = -fx*x/(z*z);
+            J(0, 3) = -fx*x*y/(z*z);
+            J(0, 4) = +fx*(1 + x*x/(z*z));
+            J(0, 5) = -fx*(y/z);
+            J(1, 0) = 0.0;
+            J(1, 1) = +fy/z;
+            J(1, 2) = -fy*y/(z*z);
+            J(1, 3) = -fy*(1 + y*y/(z*z));
+            J(1, 4) = +fy*x*y/(z*z);
+            J(1, 5) = +fy*x/z;
+
+            J *= -1.0;
+
+            // update G-N:
+            H += J.transpose() * J;
+            b += -J.transpose() * e;
+        }
+
+	    // solve dx 
+        Vector6d dT = H.fullPivHouseholderQr().solve(b);
+
+        // validity check:
+        if (isnan(dT[0])) {
+            cout << "[PnP G-N]: Result is nan at iteration " << iter << ". Aborted." << endl;
+            break;
+        }
+
+        // early stopping:
+        if (iter > 0 && cost >= lastCost) {
+            // cost increase, update is not good
+            cout << "[PnP G-N]: Cost increased. current: " << cost << ", last: " << lastCost << ". Aborted." << endl;
+            break;
+        }
+
+        cout << "\tIteration " << iter << " current cost: " << cout.precision(12) << cost << " last cost: " << cout.precision(12) << lastCost << endl;
+
+        // update pose:
+        T_esti = Sophus::SE3<double, Eigen::AutoAlign>::exp(dT) * T_esti;
+        
+        lastCost = cost;
+    }
+
+    cout << "[PnP G-N]: estimated pose: \n" << T_esti.matrix() << endl;
+```
+
+#### Results and Review
+
+The iterative optimization log is shown below:
+
+```bash
+[PnP G-N]: Num. of points: 76. Max Iternation:100
+	Iteration 0 current cost: 622769.1141257 last cost: 121.79769313486e+308
+	Iteration 1 current cost: 12206.604278533 last cost: 1222769.1141257
+	Iteration 2 current cost: 12150.675965788 last cost: 12206.604278533
+	Iteration 3 current cost: 12150.6753269 last cost: 12150.675965788
+	Iteration 4 current cost: 12150.6753269 last cost: 12150.6753269
+	Iteration 5 current cost: 12150.6753269 last cost: 12150.6753269
+[PnP G-N]: Cost increased. current: 150.6753269, last: 150.6753269. Aborted.
+[PnP G-N]: estimated pose: 
+   0.997866186837  -0.0516724392948   0.0399128072707   -0.127226620999
+  0.0505959188721    0.998339770315   0.0275273682287 -0.00750679765283
+  -0.041268949107  -0.0254492048094    0.998823914318   0.0613860848809
+                0                 0                 0                 1
+```
+
+##### 1. How should projection error be defined?
+##### 1. 如何定义重投影误差?
+
+See the code snippet below.
+
+```c++
+    // project 3D point to pixel plane:
+    Vector3d P = T_esti.rotationMatrix()*p3d.at(i) + T_esti.translation();
+    Vector3d P_esti = K*P;
+    Vector2d p_esti{P_esti(0)/P_esti(2), P_esti(1)/P_esti(2)};
+
+    // calculate error:
+    Vector2d e = p2d.at(i) - p_esti;
+
+    // update cost:
+    cost += 0.5*e.squaredNorm();
+```
+
+##### 2. How should Jacobian matrix of the error be defined?
+##### 2. 该误差关于自变量的雅可比矩阵是什么?
+
+See the code snippet below.
+
+```c++
+    // Jacobian matrix error with respect to ln(T_esti):
+    J << +fx/z,   0.0, -fx*x/(z*z),       -fx*x*y/(z*z), +fx*(1 + x*x/(z*z)), -fx*(y/z), 
+           0.0, +fy/z, -fy*y/(z*z), -fy*(1 + y*y/(z*z)),       +fy*x*y/(z*z),   +fy*x/z;
+```
+
+##### 3. How should pose estimation be updated?
+##### 3. 解出更新量之后,如何更新至之前的估计上?
+
+See the code snippet below.
+
+```c++
+    // update pose:
+    T_esti = Sophus::SE3<double, Eigen::AutoAlign>::exp(dT) * T_esti;
+```
+
 ---
 
 ### 4. ICP for Trajectory Alignment

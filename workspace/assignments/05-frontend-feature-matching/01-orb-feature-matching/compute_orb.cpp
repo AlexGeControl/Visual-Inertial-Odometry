@@ -3,10 +3,14 @@
 // 本程序演示ORB是如何提取、计算和匹配的
 //
 
-#include <opencv2/opencv.hpp>
 #include <cmath>
 #include <string>
 #include <bitset>
+
+#include <opencv2/opencv.hpp>
+
+#include <Eigen/Core>
+#include <pangolin/pangolin.h>
 
 using namespace std;
 
@@ -40,6 +44,127 @@ void computeORBDesc(const cv::Mat &image, vector<cv::KeyPoint> &keypoints, vecto
  * @param matches matches of two images
  */
 void bfMatch(const vector<DescType> &desc1, const vector<DescType> &desc2, vector<cv::DMatch> &matches);
+
+void GetRelativePose(
+    const vector<cv::KeyPoint> &keypoint_one,
+    const vector<cv::KeyPoint> &keypoint_another,
+    const vector<cv::DMatch> &matches,
+    cv::Mat &R, cv::Mat &t
+) {
+    static const cv::Mat K = (
+        cv::Mat_<double>(3, 3) << 
+            520.9,     0, 325.1, 
+                0, 521.0, 249.7, 
+                0,     0,   1.0
+    );
+
+    // format for OpenCV findEssentialMat
+    vector<cv::Point2f> points1;
+    vector<cv::Point2f> points2;
+
+    for (const auto &match: matches) {
+        points1.push_back(keypoint_one.at(match.queryIdx).pt);
+        points2.push_back(keypoint_another.at(match.trainIdx).pt);
+    }
+
+    // compute essential matrix:
+    cv::Mat E = cv::findEssentialMat(points1, points2, K);
+    cout << "[ORB Feature Matching]: Essential matrix is \n" << E << endl;
+
+    // get relative pose:
+    cv::recoverPose(E, points1, points2, K, R, t);
+
+    cout << "[ORB Feature Matching]: Relative pose is \n" << R << t << endl;
+}
+
+void Triangulate(
+    const vector<cv::KeyPoint> &keypoint_one,
+    const vector<cv::KeyPoint> &keypoint_another,
+    const vector<cv::DMatch> &matches,
+    const cv::Mat &R, const cv::Mat &t,
+    vector<cv::Point3d> &points
+) {
+    // format for OpenCV triangulatePoints
+    cv::Mat T1 = (
+        cv::Mat_<double>(3, 4) << 
+            1.0, 0.0, 0.0, 0.0, 
+            0.0, 1.0, 0.0, 0.0, 
+            0.0, 0.0, 1.0, 0.0
+    );
+    cv::Mat T2 = (
+        cv::Mat_<double>(3, 4) << 
+            R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), t.at<double>(0,0),
+            R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), t.at<double>(1,0),
+            R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), t.at<double>(2,0) 
+    );
+
+    vector<cv::Point2f> points1;
+    vector<cv::Point2f> points2;
+    for (const auto &match: matches) {
+        points1.push_back(
+            cv::Point2f(
+                (keypoint_one.at(match.queryIdx).pt.x - 325.1) / 520.9,
+                (keypoint_one.at(match.queryIdx).pt.y - 249.7) / 521.0
+            )    
+        );
+        points2.push_back(
+            cv::Point2f(
+                (keypoint_one.at(match.trainIdx).pt.x - 325.1) / 520.9,
+                (keypoint_one.at(match.trainIdx).pt.y - 249.7) / 521.0
+            )            
+        );
+    }
+
+    cv::Mat point4d;
+    cv::triangulatePoints(T1, T2, points1, points2, point4d);
+
+    // format for output:
+    for (size_t i = 0; i < point4d.cols; ++i) {
+        cv::Point3d point(
+            point4d.at<double>(0, i) / point4d.at<double>(3, i),
+            point4d.at<double>(1, i) / point4d.at<double>(3, i),
+            point4d.at<double>(2, i) / point4d.at<double>(3, i)
+        );
+
+        points.push_back(point);
+    }    
+}
+
+void ShowReconstruction(
+    const vector<cv::Point3d> &pointcloud
+) {
+    pangolin::CreateWindowAndBind("ICP Registration", 1024, 768);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    pangolin::OpenGlRenderState s_cam(
+        pangolin::ProjectionMatrix(1024, 768, 500, 500, 512, 389, 0.1, 1000),
+        pangolin::ModelViewLookAt(0, -0.1, -1.8, 0, 0, 0, 0.0, -1.0, 0.0)
+    );
+
+    pangolin::View &d_cam = pangolin::CreateDisplay()
+        .SetBounds(0.0, 1.0, pangolin::Attach::Pix(175), 1.0, -1024.0f / 768.0f)
+        .SetHandler(new pangolin::Handler3D(s_cam));
+
+    while (pangolin::ShouldQuit() == false) {
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        d_cam.Activate(s_cam);
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+        glPointSize(2);
+        glBegin(GL_POINTS);
+        for (auto &p: pointcloud) {
+            glColor3f(0.8f, 0.8f, 0.8f);
+            glVertex3d(p.x, p.y, p.z);
+            std::cout << p.x << ", " << p.y << ", " << p.z << std::endl;
+        }
+        glEnd();
+        pangolin::FinishFrame();
+    }
+    return;
+}
 
 int main(int argc, char **argv) {
 
@@ -92,9 +217,18 @@ int main(int argc, char **argv) {
 
     // plot the matches
     cv::drawMatches(first_image, keypoints, second_image, keypoints2, matches, image_show);
-    // cv::imshow("matches", image_show);
     cv::imwrite("matches.png", image_show);
-    // cv::waitKey(0);
+    
+    // get relative pose:
+    cv::Mat R, t;
+    GetRelativePose(keypoints, keypoints2, matches, R, t);
+
+    // triangulate:
+    vector<cv::Point3d> points;
+    Triangulate(keypoints, keypoints2, matches, R, t, points);
+
+    // visualize:
+    ShowReconstruction(points);
 
     cout << "[ORB Feature Matching]: done." << endl;
 

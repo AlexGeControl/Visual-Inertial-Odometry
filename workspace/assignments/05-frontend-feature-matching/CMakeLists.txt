@@ -50,6 +50,8 @@ ADD_EXECUTABLE(orb_feature_matching 01-orb-feature-matching/compute_orb.cpp)
 TARGET_LINK_LIBRARIES(
     orb_feature_matching
     ${OpenCV_LIBS}
+    ${EIGEN3_LIBS}
+    ${Pangolin_LIBRARIES}
 )
 
 ##

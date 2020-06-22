@@ -6,6 +6,20 @@ This is the solution of Assignment 05 of Visual SLAM: Theory and Practice from [
 
 ---
 
+### Up and Running
+
+The solution has been tested inside Docker CPU/GPU.
+
+```bash
+# go to workspace:
+cd /workspace/assignments/05-frontend-feature-matching
+# build:
+mkdir build && cd build && cmake .. && make -j8
+# execute the solution 
+```
+
+---
+
 ## Solutions
 
 ### 1. ORB Feature Matching

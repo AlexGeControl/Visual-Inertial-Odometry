@@ -103,14 +103,14 @@ void Triangulate(
     for (const auto &match: matches) {
         points1.push_back(
             cv::Point2f(
-                (keypoint_one.at(match.queryIdx).pt.x - 325.1) / 520.9,
-                (keypoint_one.at(match.queryIdx).pt.y - 249.7) / 521.0
+                (keypoint_one.at(match.queryIdx).pt.x - 325.1),
+                (keypoint_one.at(match.queryIdx).pt.y - 249.7)
             )    
         );
         points2.push_back(
             cv::Point2f(
-                (keypoint_one.at(match.trainIdx).pt.x - 325.1) / 520.9,
-                (keypoint_one.at(match.trainIdx).pt.y - 249.7) / 521.0
+                (keypoint_one.at(match.trainIdx).pt.x - 325.1),
+                (keypoint_one.at(match.trainIdx).pt.y - 249.7)
             )            
         );
     }
@@ -158,7 +158,6 @@ void ShowReconstruction(
         for (auto &p: pointcloud) {
             glColor3f(0.8f, 0.8f, 0.8f);
             glVertex3d(p.x, p.y, p.z);
-            std::cout << p.x << ", " << p.y << ", " << p.z << std::endl;
         }
         glEnd();
         pangolin::FinishFrame();

@@ -150,6 +150,12 @@ void bfMatch(const vector<DescType> &desc1, const vector<DescType> &desc2, vecto
 
 #### Results and Review
 
+The feature point detection results are as follows:
+
+Image One                |Image Another
+:-------------------------:|:-------------------------:
+![Feature Point Detection One](doc/01-orb-feature-matching/features-01.png)  |  ![Feature Point Detection Another](doc/01-orb-feature-matching/features-02.png)
+
 The matching result is shown below.
 
 <img src="doc/01-orb-feature-matching/matches.png" alt="ORB Feature Matching Result">
@@ -431,7 +437,50 @@ The solution is available at (click to follow the link) [here](04-icp). Below ar
 - [Gaussian-Newton](04-icp/G-N.cpp)
 - [g2o](04-icp/g2o.cpp)
 
-#### Implementation
+#### Implementation, SVD
+
+Here is the C++ implementation of SVD solver:
+
+```c++
+    // start optimization:
+    size_t N = traj.size();
+    std::cout << "[ICP SVD]: Trajectory length " << N << std::endl;
+
+    // init estimated pose:
+    EstimationState state;
+
+    // compute mean for source and target:
+    for (size_t i = 0; i < N; ++i) {
+        state.u_source += traj.at(i).source.pose.translation();
+        state.u_target += traj.at(i).target.pose.translation();
+    } 
+    state.u_source /= N;
+    state.u_target /= N;
+
+    // compute W:
+    Eigen::Matrix3d W = Eigen::Matrix3d::Zero();
+    for (size_t i = 0; i < N; ++i) {
+        auto q_target = traj.at(i).target.pose.translation() - state.u_target;
+        auto q_source = traj.at(i).source.pose.translation() - state.u_source;
+        W += q_target * q_source.transpose();
+    }
+
+    // SVD:
+    Eigen::BDCSVD<Eigen::Matrix3d> svd(W, Eigen::ComputeFullU|Eigen::ComputeFullV);
+    const Eigen::Matrix3d &U = svd.matrixU();
+    const Eigen::Matrix3d &V = svd.matrixV();
+
+    // set pose:
+    Eigen::Matrix3d R = U * V.transpose();
+    Eigen::Vector3d t = state.u_target  - R*state.u_source;
+    state.T = Sophus::SE3d(R, t);
+    std::cout << "[ICP SVD]: estimated pose: \n" << state.T.matrix() << std::endl;
+
+    // visualize registration result:
+    DrawTrajectory(traj, state.T);
+```
+
+#### Implementation, Gaussian-Newton
 
 Here is the C++ implementation of the Gaussian-Newton solver:
 
@@ -515,7 +564,18 @@ Here is the C++ implementation of the Gaussian-Newton solver:
 
 #### Results
 
-The iterative optimization log is shown below:
+The log of SVD solver is show as follows:
+
+```bash
+[ICP SVD]: Trajectory length 612
+[ICP SVD]: estimated pose: 
+ 0.923062  0.133592 -0.360707    1.5394
+ 0.369046 -0.571969  0.732568  0.932636
+-0.108448 -0.809323 -0.577265   1.44618
+        0         0         0         1
+```
+
+The Gaussian-Newton optimization process is shown below:
 
 ```bash
 [ICP G-N]: Trajectory length 612, Max Num. of iterations: 100
@@ -540,4 +600,6 @@ The iterative optimization log is shown below:
 
 The registration result is visualized with Pangolin as follows:
 
-<img src="doc/04-icp-registration/icp-registration.png" alt="ICP Registration with Gaussian Newton">
+SVD Solver                |Gaussian-Newton Solver
+:-------------------------:|:-------------------------:
+![SVD Registration Result](doc/04-icp-registration/icp-svd.png)  |  ![Gaussian-Newton Registration Result](doc/04-icp-registration/icp-gaussian-newton.png)

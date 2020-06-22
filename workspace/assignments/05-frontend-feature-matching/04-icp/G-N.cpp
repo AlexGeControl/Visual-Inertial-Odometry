@@ -11,12 +11,15 @@
 #include <vector>
 #include <string>
 
+// Eigen:
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 
+// Sophus:
 #include <sophus/se3.hpp>
 
+// Pangolin:
 #include <pangolin/pangolin.h>
 
 struct PoseStamped {

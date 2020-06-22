@@ -75,12 +75,13 @@ TARGET_LINK_LIBRARIES(
 ##
 ## 4.a ICP using SVD
 ##
-## ADD_EXECUTABLE(icp_svd 04-icp/SVD.cpp)
-## TARGET_LINK_LIBRARIES(
-##     icp_svd
-##     ${EIGEN3_LIBS}
-##     ${SOPHUS_LIBS}
-## )
+ADD_EXECUTABLE(icp_svd 04-icp/SVD.cpp)
+TARGET_LINK_LIBRARIES(
+    icp_svd
+    ${EIGEN3_LIBS}
+    ${SOPHUS_LIBS}
+    ${Pangolin_LIBRARIES}
+)
 
 ##
 ## 4.a ICP using Gaussian-Newton on se(3)

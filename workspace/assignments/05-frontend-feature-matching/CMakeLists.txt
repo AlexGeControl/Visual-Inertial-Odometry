@@ -18,7 +18,9 @@ FIND_PACKAGE(Sophus REQUIRED)
 # d. Ceres:
 FIND_PACKAGE(Ceres REQUIRED)
 # e. g2o:
-SET(g2o REQUIRED)
+FIND_PACKAGE(g2o REQUIRED)
+# f. Pangolin:
+FIND_PACKAGE(Pangolin REQUIRED)
 
 ###########
 ## Build ##
@@ -32,6 +34,7 @@ INCLUDE_DIRECTORIES(
     ${SOPHUS_INCLUDE_DIR}
     ${CERES_INCLUDE_DIR}
     ${G2O_INCLUDE_DIR}
+    ${PANGOLIN_INCLUDE_DIR}
 )
 
 ##
@@ -67,4 +70,25 @@ TARGET_LINK_LIBRARIES(
     pnp_gaussian_newton
     ${EIGEN3_LIBS}
     ${SOPHUS_LIBS}
+)
+
+##
+## 4.a ICP using SVD
+##
+## ADD_EXECUTABLE(icp_svd 04-icp/SVD.cpp)
+## TARGET_LINK_LIBRARIES(
+##     icp_svd
+##     ${EIGEN3_LIBS}
+##     ${SOPHUS_LIBS}
+## )
+
+##
+## 4.a ICP using Gaussian-Newton on se(3)
+##
+ADD_EXECUTABLE(icp_gaussian_newton 04-icp/G-N.cpp)
+TARGET_LINK_LIBRARIES(
+    icp_gaussian_newton
+    ${EIGEN3_LIBS}
+    ${SOPHUS_LIBS}
+    ${Pangolin_LIBRARIES}
 )

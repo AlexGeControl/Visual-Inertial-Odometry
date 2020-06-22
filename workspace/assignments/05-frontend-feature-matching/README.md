@@ -424,3 +424,120 @@ See the code snippet below.
 
 ### 4. ICP for Trajectory Alignment
 ### 4. 用 ICP 实现轨迹对齐
+
+The solution is available at (click to follow the link) [here](04-icp). Below are the implemented solvers:
+
+- [SVD](04-icp/SVD.cpp)
+- [Gaussian-Newton](04-icp/G-N.cpp)
+- [g2o](04-icp/g2o.cpp)
+
+#### Implementation
+
+Here is the C++ implementation of the Gaussian-Newton solver:
+
+```c++
+    // start optimization:
+    size_t N = traj.size();
+    size_t MAX_ITERATIONS = 100;
+    std::cout << "[ICP G-N]: Trajectory length " << N << ", Max Num. of iterations: " << MAX_ITERATIONS << std::endl;
+
+    // init estimated pose
+    OptimizationState state;
+
+    for (size_t i = 0; i < MAX_ITERATIONS; ++i) {
+        Eigen::Matrix<double, 6, 6> H = Eigen::Matrix<double, 6, 6>::Zero();
+        Eigen::Matrix<double, 6, 1> b = Eigen::Matrix<double, 6, 1>::Zero();
+
+        state.cost_curr = 0.0;
+        for (size_t j = 0; j < N; j++) {
+            // re-project::
+            Eigen::Vector3d t_source = traj.at(j).source.pose.translation();
+            Eigen::Vector3d t_target_esti = state.T.rotationMatrix()*t_source + state.T.translation();
+            Eigen::Vector3d t_target = traj.at(j).target.pose.translation();
+
+            // calcuate error:
+            Eigen::Vector3d e = t_target - t_target_esti;
+
+            // update cost:
+            state.cost_curr += 0.5*e.squaredNorm();
+
+	        // compute jacobian
+            Eigen::Matrix<double, 3, 6> J = Eigen::Matrix<double, 3, 6>::Zero();
+            
+            double x{t_target_esti(0)}, y{t_target_esti(1)}, z{t_target_esti(2)};
+
+            // first part:
+            J(0, 0) = J(1, 1) = J(2, 2) = 1.0;
+            // second part:
+            J(0, 4) = +z;
+            J(0, 5) = -y;
+            J(1, 3) = -z;
+            J(1, 5) = +x;
+            J(2, 3) = +y;
+            J(2, 4) = -x;
+        
+            J *= -1.0;
+
+            // update G-N:
+            H += J.transpose() * J;
+            b += -J.transpose() * e;
+        }
+
+	    // solve dx 
+        Eigen::Matrix<double, 6, 1> dT = H.fullPivHouseholderQr().solve(b);
+
+        // validity check:
+        if (std::isnan(dT[0])) {
+            std::cout << "[ICP G-N]: Result is nan at iteration " << i << ". Aborted." << std::endl;
+            break;
+        }
+
+        // early stopping:
+        if (i > 0 && state.cost_curr >= state.cost_prev) {
+            // cost increase, update is not good
+            std::cout << "[ICP G-N]: Cost increased. current: " << state.cost_curr << ", last: " << state.cost_prev << ". Aborted." << std::endl;
+            break;
+        }
+
+        std::cout << "\tIteration " << i << " current cost: " << std::cout.precision(12) << state.cost_curr << " last cost: " << std::cout.precision(12) << state.cost_prev << std::endl;
+
+        // update pose:
+        state.T = Sophus::SE3d::exp(dT) * state.T;
+        
+        state.cost_prev = state.cost_curr;
+    }
+
+    std::cout << "[ICP G-N]: estimated pose: \n" << state.T.matrix() << std::endl;
+
+    // visualize registration result:
+    DrawTrajectory(traj, state.T);
+```
+
+#### Results
+
+The iterative optimization log is shown below:
+
+```bash
+[ICP G-N]: Trajectory length 612, Max Num. of iterations: 100
+	Iteration 0 current cost: 62009.68783765 last cost: 121.79769313486e+308
+	Iteration 1 current cost: 12336.06938919 last cost: 122009.68783765
+	Iteration 2 current cost: 1270.6509739879 last cost: 12336.06938919
+	Iteration 3 current cost: 123.12429002881 last cost: 1270.6509739879
+	Iteration 4 current cost: 120.163280239885 last cost: 123.12429002881
+	Iteration 5 current cost: 120.16314975302 last cost: 120.163280239885
+	Iteration 6 current cost: 120.163149752985 last cost: 120.16314975302
+	Iteration 7 current cost: 120.163149752985 last cost: 120.163149752985
+	Iteration 8 current cost: 120.163149752985 last cost: 120.163149752985
+	Iteration 9 current cost: 120.163149752985 last cost: 120.163149752985
+	Iteration 10 current cost: 120.163149752985 last cost: 120.163149752985
+[ICP G-N]: Cost increased. current: 0.163149752985, last: 0.163149752985. Aborted.
+[ICP G-N]: estimated pose: 
+ 0.923062125637  0.133591608366 -0.360707075602    1.5394046544
+  0.36904641773 -0.571969202882  0.732568066813  0.932636230528
+-0.108448392223 -0.809323491027 -0.577264612718   1.44617984341
+              0               0               0               1
+```
+
+The registration result is visualized with Pangolin as follows:
+
+<img src="doc/04-icp-registration/icp-registration.png" alt="ICP Registration with Gaussian Newton">

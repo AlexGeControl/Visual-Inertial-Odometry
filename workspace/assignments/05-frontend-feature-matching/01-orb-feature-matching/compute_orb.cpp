@@ -46,188 +46,191 @@ void computeORBDesc(const cv::Mat &image, vector<cv::KeyPoint> &keypoints, vecto
 void bfMatch(const vector<DescType> &desc1, const vector<DescType> &desc2, vector<cv::DMatch> &matches);
 
 void GetRelativePose(
-    const vector<cv::KeyPoint> &keypoint_one,
-    const vector<cv::KeyPoint> &keypoint_another,
+    const cv::Mat &K,
+    const vector<cv::KeyPoint> &keypoints_target,
+    const vector<cv::KeyPoint> &keypoints_source,
     const vector<cv::DMatch> &matches,
     cv::Mat &R, cv::Mat &t
 ) {
-    static const cv::Mat K = (
-        cv::Mat_<double>(3, 3) << 
-            520.9,     0, 325.1, 
-                0, 521.0, 249.7, 
-                0,     0,   1.0
-    );
-
     // format for OpenCV findEssentialMat
-    vector<cv::Point2f> points1;
-    vector<cv::Point2f> points2;
+    vector<cv::Point2f> points_target;
+    vector<cv::Point2f> points_source;
 
     for (const auto &match: matches) {
-        points1.push_back(keypoint_one.at(match.queryIdx).pt);
-        points2.push_back(keypoint_another.at(match.trainIdx).pt);
+        points_target.push_back(keypoints_target.at(match.queryIdx).pt);
+        points_source.push_back(keypoints_source.at(match.trainIdx).pt);
     }
 
     // compute essential matrix:
-    cv::Mat E = cv::findEssentialMat(points1, points2, K);
+    cv::Mat E = cv::findEssentialMat(points_target, points_source, K);
     cout << "[ORB Feature Matching]: Essential matrix is \n" << E << endl;
 
     // get relative pose:
-    cv::recoverPose(E, points1, points2, K, R, t);
+    cv::recoverPose(E, points_target, points_source, K, R, t);
 
-    cout << "[ORB Feature Matching]: Relative pose is \n" << R << t << endl;
+    std::cout << 
+        "[ORB Feature Matching]: Relative pose is" << 
+            "\n\t R: \n" << R << "\n\t t: \n" << t << std::endl;
+}
+
+cv::Point2f PixelToCam(const cv::Point2d &p, const cv::Mat &K) {
+  return cv::Point2f
+    (
+      (p.x - K.at<double>(0, 2)) / K.at<double>(0, 0),
+      (p.y - K.at<double>(1, 2)) / K.at<double>(1, 1)
+    );
 }
 
 void Triangulate(
-    const vector<cv::KeyPoint> &keypoint_one,
-    const vector<cv::KeyPoint> &keypoint_another,
+    const cv::Mat &K,
+    const vector<cv::KeyPoint> &keypoint_target,
+    const vector<cv::KeyPoint> &keypoint_source,
     const vector<cv::DMatch> &matches,
     const cv::Mat &R, const cv::Mat &t,
     vector<cv::Point3d> &points
 ) {
     // format for OpenCV triangulatePoints
-    cv::Mat T1 = (
+    cv::Mat T_target = (
         cv::Mat_<double>(3, 4) << 
             1.0, 0.0, 0.0, 0.0, 
             0.0, 1.0, 0.0, 0.0, 
             0.0, 0.0, 1.0, 0.0
     );
-    cv::Mat T2 = (
+    cv::Mat T_source = (
         cv::Mat_<double>(3, 4) << 
             R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), t.at<double>(0,0),
             R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), t.at<double>(1,0),
             R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), t.at<double>(2,0) 
     );
 
-    vector<cv::Point2f> points1;
-    vector<cv::Point2f> points2;
+    vector<cv::Point2f> points_target;
+    vector<cv::Point2f> points_source;
     for (const auto &match: matches) {
-        points1.push_back(
-            cv::Point2f(
-                (keypoint_one.at(match.queryIdx).pt.x - 325.1),
-                (keypoint_one.at(match.queryIdx).pt.y - 249.7)
-            )    
+        points_target.push_back(
+            PixelToCam(keypoint_target.at(match.queryIdx).pt, K) 
         );
-        points2.push_back(
-            cv::Point2f(
-                (keypoint_one.at(match.trainIdx).pt.x - 325.1),
-                (keypoint_one.at(match.trainIdx).pt.y - 249.7)
-            )            
+        points_source.push_back(
+            PixelToCam(keypoint_source.at(match.trainIdx).pt, K)        
         );
     }
 
-    cv::Mat point4d;
-    cv::triangulatePoints(T1, T2, points1, points2, point4d);
+    cv::Mat landmarks;
+    cv::triangulatePoints(T_target, T_source, points_target, points_source, landmarks);
 
     // format for output:
-    for (size_t i = 0; i < point4d.cols; ++i) {
+    for (size_t i = 0; i < landmarks.cols; ++i) {
         cv::Point3d point(
-            point4d.at<double>(0, i) / point4d.at<double>(3, i),
-            point4d.at<double>(1, i) / point4d.at<double>(3, i),
-            point4d.at<double>(2, i) / point4d.at<double>(3, i)
+            landmarks.at<float>(0, i) / landmarks.at<float>(3, i),
+            landmarks.at<float>(1, i) / landmarks.at<float>(3, i),
+            landmarks.at<float>(2, i) / landmarks.at<float>(3, i)
         );
-
         points.push_back(point);
     }    
 }
 
-void ShowReconstruction(
-    const vector<cv::Point3d> &pointcloud
-) {
-    pangolin::CreateWindowAndBind("ICP Registration", 1024, 768);
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    pangolin::OpenGlRenderState s_cam(
-        pangolin::ProjectionMatrix(1024, 768, 500, 500, 512, 389, 0.1, 1000),
-        pangolin::ModelViewLookAt(0, -0.1, -1.8, 0, 0, 0, 0.0, -1.0, 0.0)
-    );
-
-    pangolin::View &d_cam = pangolin::CreateDisplay()
-        .SetBounds(0.0, 1.0, pangolin::Attach::Pix(175), 1.0, -1024.0f / 768.0f)
-        .SetHandler(new pangolin::Handler3D(s_cam));
-
-    while (pangolin::ShouldQuit() == false) {
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        d_cam.Activate(s_cam);
-        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-
-        glPointSize(2);
-        glBegin(GL_POINTS);
-        for (auto &p: pointcloud) {
-            glColor3f(0.8f, 0.8f, 0.8f);
-            glVertex3d(p.x, p.y, p.z);
-        }
-        glEnd();
-        pangolin::FinishFrame();
-    }
-    return;
+inline cv::Scalar DepthToColor(float depth) {
+  float up_th = 50, low_th = 10, th_range = up_th - low_th;
+  if (depth > up_th) depth = up_th;
+  if (depth < low_th) depth = low_th;
+  return cv::Scalar(255 * depth / th_range, 0, 255 * (1 - depth / th_range));
 }
 
 int main(int argc, char **argv) {
-
     // load image
-    cv::Mat first_image = cv::imread(first_file, 0);    // load grayscale image
-    cv::Mat second_image = cv::imread(second_file, 0);  // load grayscale image
+    cv::Mat K = (
+        cv::Mat_<double>(3, 3) << 
+            520.9,     0, 325.1, 
+                0, 521.0, 249.7, 
+                0,     0,   1.0
+    );
+    cv::Mat image_target = cv::imread(first_file, 0);    // load grayscale image
+    cv::Mat image_source = cv::imread(second_file, 0);  // load grayscale image
     cv::Mat image_show;
 
     // detect FAST keypoints using threshold=40
-    vector<cv::KeyPoint> keypoints;
-    cv::FAST(first_image, keypoints, 40);
-    cout << "[ORB Feature Matching]: Num. of keypoints in Image One: " << keypoints.size() << endl;
+    vector<cv::KeyPoint> keypoints_target;
+    cv::FAST(image_target, keypoints_target, 40);
+    cout << "[ORB Feature Matching]: Num. of keypoints in Target Image: " << keypoints_target.size() << endl;
 
     // compute angle for each keypoint
-    computeAngle(first_image, keypoints);
+    computeAngle(image_target, keypoints_target);
 
     // compute ORB descriptors
-    vector<DescType> descriptors;
-    computeORBDesc(first_image, keypoints, descriptors);
-
-    // plot the keypoints:
-    cv::drawKeypoints(first_image, keypoints, image_show, cv::Scalar::all(-1),
-                      cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-    cv::imwrite("features-01.png", image_show);
-
-    // we can also match descriptors between images
-    // same for the second
-    vector<cv::KeyPoint> keypoints2;
-    cv::FAST(second_image, keypoints2, 40);
-    cout << "[ORB Feature Matching]: Num. of keypoints in Image Another: " << keypoints2.size() << endl;
-
-    // compute angle for each keypoint
-    computeAngle(second_image, keypoints2);
-
-    // compute ORB descriptors
-    vector<DescType> descriptors2;
-    computeORBDesc(second_image, keypoints2, descriptors2);
+    vector<DescType> descriptors_target;
+    computeORBDesc(image_target, keypoints_target, descriptors_target);
 
     // plot the keypoints:
     cv::drawKeypoints(
-        second_image, keypoints2, image_show, 
-        cv::Scalar::all(-1), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS
+        image_target, keypoints_target, 
+        image_show, cv::Scalar::all(-1), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS
     );
-    cv::imwrite("features-02.png", image_show);
+    cv::imwrite("features-target.png", image_show);
+
+    // we can also match descriptors between images
+    // same for the second
+    vector<cv::KeyPoint> keypoints_source;
+    cv::FAST(image_source, keypoints_source, 40);
+    cout << "[ORB Feature Matching]: Num. of keypoints in Source Image: " << keypoints_source.size() << endl;
+
+    // compute angle for each keypoint
+    computeAngle(image_source, keypoints_source);
+
+    // compute ORB descriptors
+    vector<DescType> descriptors_source;
+    computeORBDesc(image_source, keypoints_source, descriptors_source);
+
+    // plot the keypoints:
+    cv::drawKeypoints(
+        image_source, keypoints_source, 
+        image_show, cv::Scalar::all(-1), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS
+    );
+    cv::imwrite("features-source.png", image_show);
 
     // find matches
     vector<cv::DMatch> matches;
-    bfMatch(descriptors, descriptors2, matches);
+    bfMatch(descriptors_target, descriptors_source, matches);
     cout << "[ORB Feature Matching]: Num. of feature description matches: " << matches.size() << endl;
 
     // plot the matches
-    cv::drawMatches(first_image, keypoints, second_image, keypoints2, matches, image_show);
+    cv::drawMatches(
+        image_target, keypoints_target, 
+        image_source, keypoints_source, 
+        matches, 
+        image_show
+    );
     cv::imwrite("matches.png", image_show);
-    
+
     // get relative pose:
     cv::Mat R, t;
-    GetRelativePose(keypoints, keypoints2, matches, R, t);
+    GetRelativePose(K, keypoints_target, keypoints_source, matches, R, t);
 
     // triangulate:
-    vector<cv::Point3d> points;
-    Triangulate(keypoints, keypoints2, matches, R, t, points);
+    std::vector<cv::Point3d> landmarks;
+    Triangulate(K, keypoints_target, keypoints_source, matches, R, t, landmarks);
 
-    // visualize:
-    ShowReconstruction(points);
+    // generate depth images:
+    cv::Mat depth_image_target{image_target.rows, image_target.cols, CV_8UC1, cv::Scalar(0)};
+    cv::Mat depth_image_source{image_source.rows, image_source.cols, CV_8UC1, cv::Scalar(0)};
+    for (size_t i = 0; i < matches.size(); ++i) {
+        // target:
+        float depth_target = landmarks[i].z;
+        cv::circle(
+            depth_image_target, 
+            keypoints_target.at(matches.at(i).queryIdx).pt, 
+            2, DepthToColor(depth_target), 2
+        );
+
+        // source:
+        cv::Mat landmark_in_source = R * (cv::Mat_<double>(3, 1) << landmarks[i].x, landmarks[i].y, landmarks[i].z) + t;
+        float depth_source = landmark_in_source.at<double>(2, 0);
+        cv::circle(
+            depth_image_source, 
+            keypoints_source.at(matches.at(i).trainIdx).pt, 
+            2, DepthToColor(depth_source), 2
+        );
+    }
+    cv::imwrite("depth-target.png", depth_image_target);
+    cv::imwrite("depth-source.png", depth_image_source);
 
     cout << "[ORB Feature Matching]: done." << endl;
 
@@ -596,23 +599,23 @@ void computeORBDesc(const cv::Mat &image, vector<cv::KeyPoint> &keypoints, vecto
 }
 
 // brute-force matching
-void bfMatch(const vector<DescType> &desc1, const vector<DescType> &desc2, vector<cv::DMatch> &matches) {
+void bfMatch(const vector<DescType> &desc_target, const vector<DescType> &desc_source, vector<cv::DMatch> &matches) {
     static const size_t N = 256;
     static const int D_MAX = 50;
 
-    for (int i = 0; i < desc1.size(); ++i) {
+    for (int i = 0; i < desc_target.size(); ++i) {
         // skip invalid descriptor:
-        if (desc1.at(i)[N]) continue;
+        if (desc_target.at(i)[N]) continue;
 
         cv::DMatch match{i, 0, N};
 
-        for (int j = 0; j < desc2.size(); ++j) {
+        for (int j = 0; j < desc_source.size(); ++j) {
             // skip invalid descriptor:
-            if (desc2.at(j)[N]) continue;
+            if (desc_source.at(j)[N]) continue;
 
-            int distance = (desc1.at(i) ^ desc2.at(j)).count();
+            int distance = (desc_target.at(i) ^ desc_source.at(j)).count();
 
-            if (distance >= D_MAX) continue;
+            if (distance > D_MAX) continue;
 
             if (distance < match.distance) {
                 match.trainIdx = j;
@@ -620,13 +623,9 @@ void bfMatch(const vector<DescType> &desc1, const vector<DescType> &desc2, vecto
             }
         }
 
-        if (match.distance < D_MAX) {
+        if (match.distance <= D_MAX) {
             matches.push_back(match);
         }
-    }
-
-    for (auto &m: matches) {
-        // cout << m.queryIdx << ", " << m.trainIdx << ", " << m.distance << endl;
     }
 
     return;

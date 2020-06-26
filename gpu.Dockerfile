@@ -47,7 +47,7 @@ RUN apt-fast update --fix-missing && \
         supervisor nginx \
         lxde x11vnc xvfb \
         ttf-ubuntu-font-family \
-        mesa-utils libgl1-mesa-dri libgl1-mesa-dev libglew-dev \
+        mesa-utils libgl1-mesa-dri libgl1-mesa-dev libglew-dev freeglut3-dev \
         libgtk-3-dev gtk3-engines-breeze gtk3-engines-unico gtk3-engines-xfce gnome-themes-standard pinta \
         libglib2.0-0 libxext6 libsm6 libxrender1 \
         dbus-x11 x11-utils \

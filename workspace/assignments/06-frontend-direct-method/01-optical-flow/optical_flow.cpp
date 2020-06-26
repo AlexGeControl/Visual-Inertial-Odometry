@@ -265,7 +265,7 @@ int main(int argc, char **argv) {
     cv::imwrite("optical-flow--multi-level-inverse.png", img2_multi_inverse);
 
     cv::imshow("Tracked by OpenCV", img2_CV);
-    cv::imwrite("optical-flow--opencv.png", img2_multi_inverse);
+    cv::imwrite("optical-flow--opencv.png", img2_CV);
 
     cv::waitKey(0);
 

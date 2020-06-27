@@ -9,6 +9,7 @@ add_definitions(-std=c++11)
 ################################################
 ## dependencies ##
 ################################################
+FIND_PACKAGE(Boost REQUIRED)
 # a. OpenCV3:
 FIND_PACKAGE(OpenCV 3.4 REQUIRED)
 # b. Eigen 3:
@@ -29,6 +30,7 @@ FIND_PACKAGE(Pangolin REQUIRED)
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 INCLUDE_DIRECTORIES(
+    ${BOOST_INCLUDE_DIR}
     ${OPENCV_INCLUDE_DIR}
     ${EIGEN3_INCLUDE_DIR}
     ${SOPHUS_INCLUDE_DIR}
@@ -44,11 +46,24 @@ INCLUDE_DIRECTORIES(
 ## SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_EXECUTABLE_DIR})
 
 ##
-## 1. ORB feature matching
+## 1. optical flow
 ##
 ADD_EXECUTABLE(optical_flow 01-optical-flow/optical_flow.cpp)
 TARGET_LINK_LIBRARIES(
     optical_flow
     ${OpenCV_LIBS}
     ${EIGEN3_LIBS}
+)
+
+##
+## 2. direct method
+##
+ADD_EXECUTABLE(direct_method 02-direct-method/direct_method.cpp)
+TARGET_LINK_LIBRARIES(
+    direct_method
+    ${BOOST_LIBS}
+    ${OpenCV_LIBS}
+    ${EIGEN3_LIBS}
+    ${SOPHUS_LIBS}
+    ${Pangolin_LIBRARIES}
 )

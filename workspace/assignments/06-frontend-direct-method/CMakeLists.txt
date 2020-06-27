@@ -67,3 +67,13 @@ TARGET_LINK_LIBRARIES(
     ${SOPHUS_LIBS}
     ${Pangolin_LIBRARIES}
 )
+
+##
+## 3. disparity map
+##
+ADD_EXECUTABLE(disparity_map 03-disparity-map/disparity_map.cpp)
+TARGET_LINK_LIBRARIES(
+    disparity_map
+    ${OpenCV_LIBS}
+    ${EIGEN3_LIBS}
+)

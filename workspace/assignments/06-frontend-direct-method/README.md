@@ -303,7 +303,7 @@ The result from OpenCV is shown below:
 
 ---
 
-### 1. Direct Method
+### 2. Direct Method
 ### 2. 直接法
 
 The solution is available at (click to follow the link) [here](02-direct-method/direct_method.cpp)
@@ -563,8 +563,65 @@ Single-Level               |Multi-Level
 
 #### 2.d 为何可以随机取点?而不用取角点或线上的点?那些不是角点的地方,投影算对了吗?
 
-    
+    Because the algorithm assumes the two patches are the same so it doesn't need any information from feature point. However, non-corner points can not guide the optimization since its gradient will be zero.
 
 #### 2.e 请总结直接法相对于特征点法的异同与优缺点。
 
+    Pros
+        * No need for feature point detection.
+        * Can work on region with no strong feature points.
+        * Can be extended to incorporate the merits of feature-matching based methods
+    
+    Cons
+        * Algorithm assumption on patch intensity is too strong.
 ---
+
+### 3. Disparity Map through Optical Flow
+### 3. 用光流法计算视差
+
+The solution is available at (click to follow the link) [here](03-disparity-map/disparity_map.cpp)
+
+#### Implementation
+
+The core idea is: **for each good estimation, extract its estimated horizontal disparity and corresponding value from disparity map then evaluate Pearson correlation coefficients on it**.
+
+```c++
+    // evaluate correlation 
+    CorrCoeff evaluator;
+    ImageWithGradient D(disparity);
+
+    // plot the differences of those functions
+    Mat img2_multi_forward;
+    cv::cvtColor(img2, img2_multi_forward, CV_GRAY2BGR);
+    for (int i = 0; i < kp2_multi_forward.size(); i++) {
+        if (success_multi_forward[i]) {
+            cv::circle(img2_multi_forward, kp2_multi_forward[i].pt, 2, cv::Scalar(0, 250, 0), 2);
+            cv::line(img2_multi_forward, kp1[i].pt, kp2_multi_forward[i].pt, cv::Scalar(0, 250, 0));
+            evaluator.Add(
+                // estimated disparity:
+                kp1.at(i).pt.x - kp2_multi_forward.at(i).pt.x,
+                // measurement from disparity map:
+                D.GetPixelValue(kp1.at(i).pt.x, kp1.at(i).pt.y)
+            );
+        }
+    }
+    cout << "[Correlation Coefficient, Multi-Level Forward]: " << evaluator.GetCoeff() << endl;
+```
+
+#### Results
+
+The Pearson Correlation Coefficients for the three methods (Multi-Level Forward, Multi-Level Inverse and OpenCV) are as follows:
+
+```bash
+[Correlation Coefficient, Multi-Level Forward]: 0.741482
+[Correlation Coefficient, Multi-Level Inverse]: 0.730189
+[Correlation Coefficient, OpenCV]: 0.79446
+```
+
+The estimated disparities are shown below. **From the image it can be seen that the farther a keypoit is away from the ego vehicle the smaller the estimated disparity, which agrees very well with the direct disparity estimation**.
+
+Multi-Level Forward        |Multi-Level Inverse        |OpenCV
+:-------------------------:|:-------------------------:|:-------------------------:
+![Multi-Level, Forward](doc/image/03-disparity-map/multi-level-forward.png)  |  ![Multi-Level, Inverse](doc/image/03-disparity-map/multi-level-inverse.png)  |  ![OpenCV](doc/image/03-disparity-map/opencv.png)
+
+

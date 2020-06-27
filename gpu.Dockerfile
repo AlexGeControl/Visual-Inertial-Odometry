@@ -57,7 +57,7 @@ RUN apt-fast update --fix-missing && \
         # LaTeX:
         texlive-latex-extra \
         # c++:
-        cmake gcc g++ build-essential libtbb-dev \
+        cmake gcc g++ build-essential libboost-dev libboost-all-dev libtbb-dev \
         # python3:
         python3-pip python3-dev python3-numpy \
         # 1. ceres -- http://ceres-solver.org/installation.html:

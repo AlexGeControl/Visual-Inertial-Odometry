@@ -98,7 +98,7 @@ public:
         Eigen::Vector2d p(
             -P(0)/P(2), -P(1)/P(2)
         );
-        // undistortion:
+        // distortion:
         double r_squared = p.squaredNorm();
         double distortion = 1.0 + r_squared * (_estimate.k1 + _estimate.k2 * r_squared);
         Eigen::Vector2d p_prime(
@@ -284,7 +284,7 @@ void SolveBA(BALProblem &bal_problem) {
     }
 
     optimizer.initializeOptimization();
-    optimizer.optimize(40);
+    optimizer.optimize(50);
 
     // set to bal problem
     for (int i = 0; i < bal_problem.num_cameras(); ++i) {

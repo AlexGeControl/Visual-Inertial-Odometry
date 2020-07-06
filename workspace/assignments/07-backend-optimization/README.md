@@ -35,12 +35,22 @@ mkdir build && cd build && cmake .. && make -j8
 ##### Why the claim 'Bundle adjustment is slow' is not correct?
 ##### 为何说 Bundle Adjustment is slow 是不对的?
 
-TBD
+The claimed slowness is almost always due to the unthinking use of a general-purpose optimization routine that completely ignores
+the bundle adjustment problem structure and sparseness. 
 
 ##### How could pose and point be parameterized? What are the pros and cons of each method?
 ##### BA中有哪些需要注意参数化的地方?Pose 和 Point 各有哪些参数化方式?有何优缺点。
 
-TBD
+* Cost Function
+    * Use Taylor expansion to linearize the cost function around current state so as to estimate a state update.
+* Pose
+    * `Unit Quaternion` can be used to represent the rotation part of pose.
+    * `Lie Algebra` and corresponding `perturbation model` can be used to represent the rotation and its derivative.
+* Point
+    * `Homogenerous Coordinates` can be used to mitigate the large error caused by distant points.
+    * `Inverse Depth Parameterization` can also be used to mitigate the large error caused by distant points.
+
+I think the `Lie Algebra` for `Pose` and the `Inverse Depth Parameterization` for `Point` are one suitable choice for bundle adjustment.
 
 ---
 
@@ -190,17 +200,16 @@ The `log` of optimization using analytic Jacobian is as follows. We can see that
 # problem overview:
 Header: 16 22106 83718
 # optimization log:
-iteration= 0	 chi2= 2132524.720570	 time= 7.32429	 cumTime= 7.32429	 edges= 83718	 schur= 1	 lambda= 888.503326	 levenbergIter= 1
-iteration= 1	 chi2= 1220355.327504	 time= 7.24393	 cumTime= 14.5682	 edges= 83718	 schur= 1	 lambda= 296.167775	 levenbergIter= 1
-iteration= 2	 chi2= 984382.567199	 time= 7.3394	 cumTime= 21.9076	 edges= 83718	 schur= 1	 lambda= 98.722592	 levenbergIter= 1
-iteration= 3	 chi2= 681054.506120	 time= 7.35763	 cumTime= 29.2653	 edges= 83718	 schur= 1	 lambda= 32.907531	 levenbergIter= 1
-iteration= 4	 chi2= 489824.754203	 time= 7.69444	 cumTime= 36.9597	 edges= 83718	 schur= 1	 lambda= 10.969177	 levenbergIter= 1
-iteration= 5	 chi2= 403070.794266	 time= 11.6948	 cumTime= 48.6545	 edges= 83718	 schur= 1	 lambda= 29.251138	 levenbergIter= 3
-iteration= 6	 chi2= 363009.118699	 time= 7.53188	 cumTime= 56.1864	 edges= 83718	 schur= 1	 lambda= 19.500759	 levenbergIter= 1
-iteration= 7	 chi2= 314099.844975	 time= 11.8666	 cumTime= 68.0529	 edges= 83718	 schur= 1	 lambda= 52.002024	 levenbergIter= 3
-iteration= 8	 chi2= 296637.546781	 time= 12.1796	 cumTime= 80.2326	 edges= 83718	 schur= 1	 lambda= 138.672063	 levenbergIter= 3
-iteration= 9	 chi2= 290072.599275	 time= 7.65337	 cumTime= 87.8859	 edges= 83718	 schur= 1	 lambda= 92.448042	 levenbergIter= 1
-iteration= 10	 chi2= 287766.552552	 time= 9.9005	 cumTime= 97.7864	 edges= 83718	 schur= 1	 lambda= 123.264056	 levenbergIter= 2
+iteration= 40	 chi2= 245706.706863	 time= 6.87834	 cumTime= 339.817	 edges= 83718	 schur= 1	 lambda= 53.487834	 levenbergIter= 1
+iteration= 41	 chi2= 243992.112708	 time= 10.5269	 cumTime= 350.344	 edges= 83718	 schur= 1	 lambda= 142.634225	 levenbergIter= 3
+iteration= 42	 chi2= 243505.627885	 time= 6.75474	 cumTime= 357.098	 edges= 83718	 schur= 1	 lambda= 95.089483	 levenbergIter= 1
+iteration= 43	 chi2= 242945.720663	 time= 8.8158	 cumTime= 365.914	 edges= 83718	 schur= 1	 lambda= 126.785978	 levenbergIter= 2
+iteration= 44	 chi2= 242628.672642	 time= 6.88683	 cumTime= 372.801	 edges= 83718	 schur= 1	 lambda= 84.523985	 levenbergIter= 1
+iteration= 45	 chi2= 242554.885146	 time= 8.84349	 cumTime= 381.645	 edges= 83718	 schur= 1	 lambda= 112.698647	 levenbergIter= 2
+iteration= 46	 chi2= 241922.861962	 time= 8.7295	 cumTime= 390.374	 edges= 83718	 schur= 1	 lambda= 150.264862	 levenbergIter= 2
+iteration= 47	 chi2= 241168.393494	 time= 9.11838	 cumTime= 399.492	 edges= 83718	 schur= 1	 lambda= 200.353150	 levenbergIter= 2
+iteration= 48	 chi2= 240597.908638	 time= 7.06	 cumTime= 406.552	 edges= 83718	 schur= 1	 lambda= 133.568767	 levenbergIter= 1
+iteration= 49	 chi2= 240385.271166	 time= 7.38516	 cumTime= 413.938	 edges= 83718	 schur= 1	 lambda= 89.045844	 levenbergIter= 183¤¹¤Ý¶Rf¸ÁA
 ...
 ```
 
@@ -226,29 +235,45 @@ The view of `King's Landing, Dubrovnik-16` is shown below
 See the following code snippet:
 
 ```c++
-    // first, project landmark to pixel frame:
-    Eigen::Vector2d p_anchor = vertex_camera->estimate().Project(X);
+    virtual void computeError() override {
+        // parse vertices:
+        auto vertex_camera = static_cast<VertexCamera *>(_vertices[0]);
+        auto vertex_landmark = static_cast<VertexLandmark *>(_vertices[1]);
 
-    // get intensity for each pixel inside surrounding patch:
-    Vector16d I_camera;
-    for (int dx = -HALF_PATCH_SIZE; dx < HALF_PATCH_SIZE; ++dx) {
-        for (int dy = -HALF_PATCH_SIZE; dy < HALF_PATCH_SIZE; ++dy) {
-            // get linear index:
-            int i = (dx + HALF_PATCH_SIZE) * (HALF_PATCH_SIZE << 1) + (dy + HALF_PATCH_SIZE);
+        // parse pose and point:
+        const CameraWithObservation &camera_observation = vertex_camera->estimate();
+        const Landmark &landmark = vertex_landmark->estimate();
 
-            // get current pixel:
-            Eigen::Vector2d p(
-                p_anchor.x() + dx,
-                p_anchor.y() + dy
-            );
+        // get patch anchor:
+        Eigen::Vector3d X = landmark.GetPosition();
+        Eigen::Vector2d p = camera_observation.Project(X);
+        const int HALF_PATCH_SIZE = landmark.GetHalfPatchSize();
 
-            // get pixel intensity:
-            I_camera[i] = vertex_camera->estimate().GetIntensity(p);
+        if (!camera_observation.IsValidPatch(p, HALF_PATCH_SIZE)) {
+            // stop optimization:
+            setLevel(1);
+            _error = Vector16d::Zero();
+            return;
         }
-    }
 
-    // set error:
-    _error = I_camera - _measurement;
+        // get projection:
+        Vector16d I_camera;
+        for (int dx = -HALF_PATCH_SIZE; dx < HALF_PATCH_SIZE; ++dx) {
+            for (int dy = -HALF_PATCH_SIZE; dy < HALF_PATCH_SIZE; ++dy) {
+                // get linear index:
+                int i = (dx + HALF_PATCH_SIZE) * (HALF_PATCH_SIZE << 1) + (dy + HALF_PATCH_SIZE);
+
+                // get deviation:
+                Eigen::Vector2d dp(dx, dy);
+
+                // pixel intensity in observation:
+                I_camera[i] = camera_observation.GetIntensity(p + dp);
+            }
+        }
+
+        // set error:
+        _error = I_camera - landmark.GetIntensities();
+    }
 ```
 
 ##### How Many Variables Are Associated with the Error?
@@ -268,7 +293,7 @@ Error关于`相机位姿`与`Landmark位置`的Jacobian，均可表示为`图像
 * 关于`Landmark位置`的矩阵由下式定义:
 
 ```c++
-J_position = J_intermediate * T_.rotation().toRotationMatrix() * J_position_parameterization;
+J_position = J_intermediate * T_.rotation().toRotationMatrix() * J_params;
 ```
 
 其中:
@@ -277,7 +302,7 @@ J_position = J_intermediate * T_.rotation().toRotationMatrix() * J_position_para
 
 <img src="02-direct-ba/doc/jacobian-for-camera-frame-point.png" alt="Jacobian with respect to Point Position in Camera Frame" width="100%">
 
-`J_position_parameterization`定义如下图所示，为`逆深度化`后位置相对于参数的Jacobian.
+`J_params`定义如下图所示，为`逆深度化`后位置相对于参数的Jacobian.
 
 <img src="02-direct-ba/doc/jacobian-for-camera-frame-point.png" alt="Jacobian with respect to Point Position in Camera Frame" width="100%">
 
@@ -297,42 +322,60 @@ Below is the C++ implementation of **Analytic Jacobian for Direct Method** (clic
 ```c++
     // use analytic Jacobian:
     virtual void linearizeOplus() override {
-        auto vertex_camera = static_cast<VertexCamera *>(_vertices[0]);
-        auto vertex_landmark = static_cast<VertexLandmark *>(_vertices[1]);
-
-        Eigen::Vector3d X = vertex_landmark->estimate().GetPosition();
-        const int HALF_PATCH_SIZE = vertex_landmark->estimate().GetHalfPatchSize();
-
-        // shall the optimization be stopped:
+        // trivial case -- skip:
         if (level()==1) {
             _jacobianOplusXi = Eigen::Matrix<double, 16, 6>::Zero();
             _jacobianOplusXj = Eigen::Matrix<double, 16, 3>::Zero();
             return;
         }
 
+        // parse vertices:
+        auto vertex_camera = static_cast<VertexCamera *>(_vertices[0]);
+        auto vertex_landmark = static_cast<VertexLandmark *>(_vertices[1]);
+
+        // parse pose and point:
+        const CameraWithObservation &camera_observation = vertex_camera->estimate();
+        const Landmark &landmark = vertex_landmark->estimate();
+
+        // get patch anchor:
+        Eigen::Vector3d X = landmark.GetPosition();
+        Eigen::Vector2d p = camera_observation.Project(X);
+        const int HALF_PATCH_SIZE = landmark.GetHalfPatchSize();
+
+        // get component matrices from camera observation:
         Eigen::Matrix<double, 2, 6> J_pose;
         Eigen::Matrix<double, 2, 3> J_position;
-        vertex_camera->estimate().GetJacobians(X, J_pose, J_position);
+        camera_observation.GetJacobians(X, J_pose, J_position);
 
-        Eigen::Vector2d p_anchor = vertex_camera->estimate().Project(X);
+        // get component matrices from landmark:
+        Eigen::Matrix3d J_params;
+        landmark.GetJacobian(J_params);
+        J_position = J_position * J_params;
+        
+        // get projection:
         for (int dx = -HALF_PATCH_SIZE; dx < HALF_PATCH_SIZE; ++dx) {
             for (int dy = -HALF_PATCH_SIZE; dy < HALF_PATCH_SIZE; ++dy) {
                 // get linear index:
                 int i = (dx + HALF_PATCH_SIZE) * (HALF_PATCH_SIZE << 1) + (dy + HALF_PATCH_SIZE);
 
-                // get current pixel:
-                Eigen::Vector2d p(
-                    p_anchor.x() + dx,
-                    p_anchor.y() + dy
-                );
+                // get patch location:
+                Eigen::Vector2d dp(dx, dy);
 
-                Eigen::Vector2d J_I = vertex_camera->estimate().GetImageGradient(p);
+                // get image gradient:
+                Eigen::Vector2d J_I = camera_observation.GetImageGradient(p + dp);
 
+                // get Jacobian with respect to camera observation:
                 Vector6d J_camera = J_I.transpose() * J_pose;
+
+                // get Jacobian with respect to landmark:
                 Eigen::Vector3d J_landmark = J_I.transpose() * J_position;
 
-                _jacobianOplusXi.block<1, 6>(i, 0) = J_camera;
-                _jacobianOplusXj.block<1, 3>(i, 0) = J_landmark;
+                if (!vertex_camera->fixed()) {
+                    _jacobianOplusXi.block<1, 6>(i, 0) = J_camera;
+                }
+                if (!vertex_landmark->fixed()) {
+                    _jacobianOplusXj.block<1, 3>(i, 0) = J_landmark;
+                }
             }   
         }     
     }
@@ -358,18 +401,17 @@ mkdir build && cd build && cmake .. && make -j4
 The `log` of optimization using analytic Jacobian is as follows. We can see that compared with using default numerical Jacobian, **using the optimized analytic Jacobian can greatly accelerate the optimization process**.
 
 ```bash
-# problem overview
+# problem overview:
 [Direct BA]: num. of observations -- 7, num. of landmarks -- 4118
-iteration= 0	 chi2= 11709513.181378	 time= 4.97691	 cumTime= 4.97691	 edges= 20350	 schur= 1	 lambda= 19307.260505	 levenbergIter= 1
-iteration= 1	 chi2= 11281311.112867	 time= 5.00041	 cumTime= 9.97732	 edges= 20350	 schur= 1	 lambda= 12871.507004	 levenbergIter= 1
-iteration= 2	 chi2= 10928395.085010	 time= 4.89385	 cumTime= 14.8712	 edges= 20350	 schur= 1	 lambda= 8581.004669	 levenbergIter= 1
-iteration= 3	 chi2= 10605438.995530	 time= 5.02336	 cumTime= 19.8945	 edges= 20350	 schur= 1	 lambda= 5720.669779	 levenbergIter= 1
-iteration= 4	 chi2= 10442832.734313	 time= 4.80786	 cumTime= 24.7024	 edges= 20350	 schur= 1	 lambda= 3813.779853	 levenbergIter= 1
-iteration= 5	 chi2= 10316638.329342	 time= 4.77102	 cumTime= 29.4734	 edges= 20350	 schur= 1	 lambda= 2542.519902	 levenbergIter= 1
-iteration= 6	 chi2= 10219616.467065	 time= 4.78031	 cumTime= 34.2537	 edges= 20350	 schur= 1	 lambda= 1695.013268	 levenbergIter= 1
-iteration= 7	 chi2= 10129821.049019	 time= 4.73212	 cumTime= 38.9859	 edges= 20350	 schur= 1	 lambda= 1130.008845	 levenbergIter= 1
-iteration= 8	 chi2= 9963265.545933	 time= 4.8531	 cumTime= 43.839	 edges= 20350	 schur= 1	 lambda= 753.339230	 levenbergIter= 1
-iteration= 9	 chi2= 9858591.421873	 time= 4.79499	 cumTime= 48.634	 edges= 20350	 schur= 1	 lambda= 502.226153	 levenbergIter= 1
+# optimization log:
+...
+iteration= 30	 chi2= 31499433.330727	 time= 6.98843	 cumTime= 201.213	 edges= 24501	 schur= 1	 lambda= 34881044.306237	 levenbergIter= 3
+iteration= 31	 chi2= 31490064.067150	 time= 5.81772	 cumTime= 207.031	 edges= 24501	 schur= 1	 lambda= 23254029.537491	 levenbergIter= 1
+iteration= 32	 chi2= 31485783.030392	 time= 6.99359	 cumTime= 214.024	 edges= 24501	 schur= 1	 lambda= 124021490.866620	 levenbergIter= 3
+iteration= 33	 chi2= 31482506.148748	 time= 5.8458	 cumTime= 219.87	 edges= 24501	 schur= 1	 lambda= 82680993.911080	 levenbergIter= 1
+iteration= 34	 chi2= 31482043.912967	 time= 6.99432	 cumTime= 226.865	 edges= 24501	 schur= 1	 lambda= 440965300.859094	 levenbergIter= 3
+iteration= 35	 chi2= 31481326.077852	 time= 5.81306	 cumTime= 232.678	 edges= 24501	 schur= 1	 lambda= 146988433.619698	 levenbergIter= 1
+iteration= 36	 chi2= 31481326.077852	 time= 11.1379	 cumTime= 243.815	 edges= 24501	 schur= 1	 lambda= 529581643.000000	 levenbergIter= 10
 ...
 ```
 
@@ -399,7 +441,9 @@ The view of the optimized scene is shown below
 ###### For direct method robust kernel, i.e., Huber kernel, might be needed. In this case how to select the threshold of Huber kernel?
 ###### 由于图像的差异,你可能需要鲁棒核函数,例如 Huber。此时 Huber 的阈值如何选取?
 
-HuberKernel的阈值，定义了怎样的Patch是`近似灰度不变`的，因为仅当误差小于该阈值时，会产生较为显著的更新量. HuberKernel阈值可以如下决定:
+从`统计的角度`, 当误差符合多元高斯分布，且信息矩阵为误差分布的信息矩阵时，误差的SquaredNorm符合chi2分布. 因此可以根据chi2分布的分位表确定HuberKernel的阈值.
+
+从`实际的角度`, HuberKernel的阈值，定义了怎样的Patch是`近似灰度不变`的，因为仅当误差小于该阈值时，会产生较为显著的更新量. 所以HuberKernel阈值还可以如下决定:
 
 * 首先确定每个Pixel Intensity最大允许的差值，记为dI;
 * 则根据误差以及二范数的定义，HuberKernel的阈值应取为4*dI.

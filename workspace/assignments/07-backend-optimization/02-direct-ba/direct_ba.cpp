@@ -42,10 +42,10 @@ float cx = 312.234;
 float cy = 239.777;
 
 // half patch size:
-const int HALF_PATCH_SIZE = 2;
-const int MAX_ITERATIONS = 10;
-const int ITERATION_STEP_SIZE = 10;
-const double HUBER_KERNEL_THRESHOLD = 12.0;
+int HALF_PATCH_SIZE = 2;
+int MAX_ITERATIONS = 200;
+int ITERATION_STEP_SIZE = 100;
+double HUBER_KERNEL_THRESHOLD = 12.0;
 
 // plot the poses and points for you, need pangolin
 void Draw(std::vector<CameraWithObservation> &camera_observations, std::vector<Landmark> &landmarks) {
@@ -201,57 +201,66 @@ int main(int argc, char **argv) {
     optimizer.setVerbose(true);
 
     // vertex:
-    std::vector<VertexCamera *> vertex_cameras;
-    for (size_t i = 0; i < camera_observations.size(); ++i) {
-        VertexCamera *v = new VertexCamera();
-        
-        v->setId(i);
-        v->setEstimate(camera_observations.at(i));
-        optimizer.addVertex(v);
-
-        vertex_cameras.push_back(v);
-    }
     std::vector<VertexLandmark *> vertex_landmarks;
     for (size_t i = 0; i < landmarks.size(); ++i) {
         VertexLandmark *v = new VertexLandmark();
         
-        v->setId(i + camera_observations.size());
+        v->setId(i);
         v->setEstimate(landmarks.at(i));
         v->setMarginalized(true);
-        // v->setFixed(true);
+
         optimizer.addVertex(v);
 
         vertex_landmarks.push_back(v);
+    }
+    std::vector<VertexCamera *> vertex_cameras;
+    for (size_t i = 0; i < camera_observations.size(); ++i) {
+        VertexCamera *v = new VertexCamera();
+        
+        v->setId(i + landmarks.size());
+        v->setEstimate(camera_observations.at(i));
+
+        // use first camera frame as local frame:
+        if (i == 0) {
+            v->setFixed(true);
+        }
+
+        optimizer.addVertex(v);
+
+        vertex_cameras.push_back(v);
     }
 
     // initial optimization:
     std::vector<EdgeDirectProjection *> edges;
     for (size_t i = 0; i < landmarks.size(); ++i) {
         for (size_t j = 0; j < camera_observations.size(); ++j) {
+            // parse pose and point:
             const CameraWithObservation &camera_observation = camera_observations.at(j);
             const Landmark &landmark = landmarks.at(i);
 
-            bool is_valid_landmark = camera_observation.IsValidLandmark(
-                landmark.GetPosition(),
-                landmark.GetHalfPatchSize()
-            );
+            // get patch anchor:
+            Eigen::Vector3d X = landmark.GetPosition();
+            Eigen::Vector2d p = camera_observation.Project(X);
+            const int HALF_PATCH_SIZE = landmark.GetHalfPatchSize();
 
-            if (is_valid_landmark) {
-                EdgeDirectProjection *e = new EdgeDirectProjection();
-
-                e->setVertex(0, vertex_cameras.at(j));
-                e->setVertex(1, vertex_landmarks.at(i));
-
-                e->setMeasurement(landmark.GetIntensities());
-                e->setInformation(Eigen::Matrix<double, 16, 16>::Identity());
-                g2o::RobustKernelHuber *robust_kernel = new g2o::RobustKernelHuber;
-                robust_kernel->setDelta(HUBER_KERNEL_THRESHOLD);
-                e->setRobustKernel(robust_kernel);
-
-                optimizer.addEdge(e);
-
-                edges.push_back(e);
+            if (!camera_observation.IsValidPatch(p, HALF_PATCH_SIZE)) {
+                continue;
             }
+
+            EdgeDirectProjection *e = new EdgeDirectProjection();
+
+            e->setVertex(0, vertex_cameras.at(j));
+            e->setVertex(1, vertex_landmarks.at(i));
+            
+            e->setInformation(Eigen::Matrix<double, 16, 16>::Identity());
+
+            g2o::RobustKernelHuber *robust_kernel = new g2o::RobustKernelHuber();
+            robust_kernel->setDelta(HUBER_KERNEL_THRESHOLD);
+            e->setRobustKernel(robust_kernel);
+
+            optimizer.addEdge(e);
+
+            edges.push_back(e);
         }
     }
 
@@ -272,12 +281,16 @@ int main(int argc, char **argv) {
             const VertexCamera *vertex_camera = static_cast<VertexCamera *>(vertices.at(0));
             const VertexLandmark *vertex_landmark = static_cast<VertexLandmark *>(vertices.at(1));
 
-            if (
-                !vertex_camera->estimate().IsValidLandmark(
-                    vertex_landmark->estimate().GetPosition(),
-                    vertex_landmark->estimate().GetHalfPatchSize()
-                )
-            ) {
+            // parse pose and point:
+            const CameraWithObservation &camera_observation = vertex_camera->estimate();
+            const Landmark &landmark = vertex_landmark->estimate();
+
+            // get patch anchor:
+            Eigen::Vector3d X = landmark.GetPosition();
+            Eigen::Vector2d p = camera_observation.Project(X);
+            const int HALF_PATCH_SIZE = landmark.GetHalfPatchSize();
+
+            if (!camera_observation.IsValidPatch(p, HALF_PATCH_SIZE)) {
                 optimizer.removeEdge(edges.at(i));
                 edges.at(i) = static_cast<EdgeDirectProjection *>(NULL);
                 ++num_bad;

@@ -72,21 +72,25 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
     virtual void computeError() override {
+        // parse vertices:
         auto vertex_camera = static_cast<VertexCamera *>(_vertices[0]);
         auto vertex_landmark = static_cast<VertexLandmark *>(_vertices[1]);
 
-        // get patch anchor:
-        Eigen::Vector3d X = vertex_landmark->estimate().GetPosition();
-        const int HALF_PATCH_SIZE = vertex_landmark->estimate().GetHalfPatchSize();
+        // parse pose and point:
+        const CameraWithObservation &camera_observation = vertex_camera->estimate();
+        const Landmark &landmark = vertex_landmark->estimate();
 
-        if (!vertex_camera->estimate().IsValidLandmark(X, HALF_PATCH_SIZE)) {
+        // get patch anchor:
+        Eigen::Vector3d X = landmark.GetPosition();
+        Eigen::Vector2d p = camera_observation.Project(X);
+        const int HALF_PATCH_SIZE = landmark.GetHalfPatchSize();
+
+        if (!camera_observation.IsValidPatch(p, HALF_PATCH_SIZE)) {
             // stop optimization:
             setLevel(1);
             _error = Vector16d::Zero();
             return;
         }
-
-        Eigen::Vector2d p_anchor = vertex_camera->estimate().Project(X);
 
         // get projection:
         Vector16d I_camera;
@@ -95,58 +99,66 @@ public:
                 // get linear index:
                 int i = (dx + HALF_PATCH_SIZE) * (HALF_PATCH_SIZE << 1) + (dy + HALF_PATCH_SIZE);
 
-                // get current pixel:
-                Eigen::Vector2d p(
-                    p_anchor.x() + dx,
-                    p_anchor.y() + dy
-                );
+                // get deviation:
+                Eigen::Vector2d dp(dx, dy);
 
                 // pixel intensity in observation:
-                I_camera[i] = vertex_camera->estimate().GetIntensity(p);
+                I_camera[i] = camera_observation.GetIntensity(p + dp);
             }
         }
 
         // set error:
-        _error = I_camera - _measurement;
+        _error = I_camera - landmark.GetIntensities();
     }
 
     // use analytic Jacobian:
     virtual void linearizeOplus() override {
-        auto vertex_camera = static_cast<VertexCamera *>(_vertices[0]);
-        auto vertex_landmark = static_cast<VertexLandmark *>(_vertices[1]);
-
-        Eigen::Vector3d X = vertex_landmark->estimate().GetPosition();
-        const int HALF_PATCH_SIZE = vertex_landmark->estimate().GetHalfPatchSize();
-
-        // shall the optimization be stopped:
+        // trivial case -- skip:
         if (level()==1) {
             _jacobianOplusXi = Eigen::Matrix<double, 16, 6>::Zero();
             _jacobianOplusXj = Eigen::Matrix<double, 16, 3>::Zero();
             return;
         }
 
+        // parse vertices:
+        auto vertex_camera = static_cast<VertexCamera *>(_vertices[0]);
+        auto vertex_landmark = static_cast<VertexLandmark *>(_vertices[1]);
+
+        // parse pose and point:
+        const CameraWithObservation &camera_observation = vertex_camera->estimate();
+        const Landmark &landmark = vertex_landmark->estimate();
+
+        // get patch anchor:
+        Eigen::Vector3d X = landmark.GetPosition();
+        Eigen::Vector2d p = camera_observation.Project(X);
+        const int HALF_PATCH_SIZE = landmark.GetHalfPatchSize();
+
+        // get component matrices from camera observation:
         Eigen::Matrix<double, 2, 6> J_pose;
         Eigen::Matrix<double, 2, 3> J_position;
-        vertex_camera->estimate().GetJacobians(X, J_pose, J_position);
-        Eigen::Matrix3d J_position_parameterization;
-        vertex_landmark->estimate().GetJacobian(J_position_parameterization);
-        J_position = J_position * J_position_parameterization;
+        camera_observation.GetJacobians(X, J_pose, J_position);
+
+        // get component matrices from landmark:
+        Eigen::Matrix3d J_params;
+        landmark.GetJacobian(J_params);
+        J_position = J_position * J_params;
         
-        Eigen::Vector2d p_anchor = vertex_camera->estimate().Project(X);
+        // get projection:
         for (int dx = -HALF_PATCH_SIZE; dx < HALF_PATCH_SIZE; ++dx) {
             for (int dy = -HALF_PATCH_SIZE; dy < HALF_PATCH_SIZE; ++dy) {
                 // get linear index:
                 int i = (dx + HALF_PATCH_SIZE) * (HALF_PATCH_SIZE << 1) + (dy + HALF_PATCH_SIZE);
 
-                // get current pixel:
-                Eigen::Vector2d p(
-                    p_anchor.x() + dx,
-                    p_anchor.y() + dy
-                );
+                // get patch location:
+                Eigen::Vector2d dp(dx, dy);
 
-                Eigen::Vector2d J_I = vertex_camera->estimate().GetImageGradient(p);
+                // get image gradient:
+                Eigen::Vector2d J_I = camera_observation.GetImageGradient(p + dp);
 
+                // get Jacobian with respect to camera observation:
                 Vector6d J_camera = J_I.transpose() * J_pose;
+
+                // get Jacobian with respect to landmark:
                 Eigen::Vector3d J_landmark = J_I.transpose() * J_position;
 
                 if (!vertex_camera->fixed()) {

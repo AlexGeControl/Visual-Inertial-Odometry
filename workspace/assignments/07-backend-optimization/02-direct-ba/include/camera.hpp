@@ -80,8 +80,8 @@ public:
         int x1 = x0 + 1, y1 = y0 + 1;
 
         return (
-            (HALF_PATCH_SIZE <= x0) && (x1 <= W_ - HALF_PATCH_SIZE) &&
-            (HALF_PATCH_SIZE <= y0) && (y1 <= H_ - HALF_PATCH_SIZE)
+            (HALF_PATCH_SIZE + 1 <= x0) && (x1 <= W_ - HALF_PATCH_SIZE - 1) &&
+            (HALF_PATCH_SIZE + 1 <= y0) && (y1 <= H_ - HALF_PATCH_SIZE - 1)
         );
     }
 
@@ -176,12 +176,6 @@ public:
         observation_(image) {
     }
 
-    bool IsValidLandmark(const Eigen::Vector3d &X, int HALF_PATCH_SIZE) const {
-        Eigen::Vector2d p = Project(X);
-
-        return observation_.IsValidPatch(p, HALF_PATCH_SIZE);
-    }
-
     Eigen::Vector2d Project(const Eigen::Vector3d &X) const {
         // map to camera coordinates:
         Eigen::Vector3d P = T_.map(X);
@@ -191,10 +185,18 @@ public:
         // map to pixel coordinates:
         Eigen::Vector2d p(
             intrinsics_.GetFx()*x_normalized + intrinsics_.GetCx(),
-            intrinsics_.GetFy()*x_normalized + intrinsics_.GetCy()
+            intrinsics_.GetFy()*y_normalized + intrinsics_.GetCy()
         );
 
         return p;
+    }
+
+    bool IsValidPatch(const Eigen::Vector2d &p, int HALF_PATCH_SIZE) const {
+        return observation_.IsValidPatch(p, HALF_PATCH_SIZE);
+    }
+
+    g2o::SE3Quat GetPose(void) const {
+        return T_;
     }
 
     double GetIntensity(const Eigen::Vector2d &p) const {
@@ -240,10 +242,6 @@ public:
 
     Eigen::Vector2d GetImageGradient(const Eigen::Vector2d &p) const {
         return observation_.GetGradient(p);
-    }
-
-    g2o::SE3Quat GetPose(void) const {
-        return T_;
     }
 
     void UpdatePose(const g2o::SE3Quat &dT) {

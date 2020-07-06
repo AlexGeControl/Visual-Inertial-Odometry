@@ -30,7 +30,7 @@ mkdir build && cd build && cmake .. && make -j8
 ---
 
 #### 1.a Research Review
-#### 1.a 文
+#### 1.a 文献综述
 
 ---
 
@@ -205,4 +205,130 @@ The view of `King's Landing, Dubrovnik-16` is shown below
 ### 2. Direct Method Using Bundle Adjustment
 ### 2. 直接法的 Bundle Adjustment
 
+---
 
+#### 2.a Optimization Problem
+#### 2.a 数学模型
+
+##### How to Describe the Error of Landmark Projection?
+##### 如何描述任意一点投影在任意一图像中形成的 error?
+
+The error term can be defined as follows:
+
+##### How Many Variables Are Associated with the Error?
+##### 每个 error 关联几个优化变量?
+
+##### What is the Jacobian of Each Variable?
+##### error 关于各变量的雅可比是什么?
+
+---
+
+#### 2.b Implementation
+#### 2.b 算法实现
+
+The solution is available at (click to follow the link) [here](02-direct-ba/direct_ba.cpp)
+
+##### Analytic Jacobian Implementation
+
+Below is the C++ implementation of **Analytic Jacobian for Direct Method** (click to follow the link) [here](02-direct-ba/include/graph.hpp)
+
+**First**, implement `linearizeOplus` of the binary edge as follows:
+
+```c++
+    // use analytic Jacobian:
+    virtual void linearizeOplus() override {
+        auto vertex_camera = static_cast<VertexCamera *>(_vertices[0]);
+        auto vertex_landmark = static_cast<VertexLandmark *>(_vertices[1]);
+
+        Eigen::Vector3d X = vertex_landmark->estimate().GetPosition();
+        const int HALF_PATCH_SIZE = vertex_landmark->estimate().GetHalfPatchSize();
+
+        // shall the optimization be stopped:
+        if (level()==1) {
+            _jacobianOplusXi = Eigen::Matrix<double, 16, 6>::Zero();
+            _jacobianOplusXj = Eigen::Matrix<double, 16, 3>::Zero();
+            return;
+        }
+
+        Eigen::Matrix<double, 2, 6> J_pose;
+        Eigen::Matrix<double, 2, 3> J_position;
+        vertex_camera->estimate().GetJacobians(X, J_pose, J_position);
+
+        Eigen::Vector2d p_anchor = vertex_camera->estimate().Project(X);
+        for (int dx = -HALF_PATCH_SIZE; dx < HALF_PATCH_SIZE; ++dx) {
+            for (int dy = -HALF_PATCH_SIZE; dy < HALF_PATCH_SIZE; ++dy) {
+                // get linear index:
+                int i = (dx + HALF_PATCH_SIZE) * (HALF_PATCH_SIZE << 1) + (dy + HALF_PATCH_SIZE);
+
+                // get current pixel:
+                Eigen::Vector2d p(
+                    p_anchor.x() + dx,
+                    p_anchor.y() + dy
+                );
+
+                Eigen::Vector2d J_I = vertex_camera->estimate().GetImageGradient(p);
+
+                Vector6d J_camera = J_I.transpose() * J_pose;
+                Eigen::Vector3d J_landmark = J_I.transpose() * J_position;
+
+                _jacobianOplusXi.block<1, 6>(i, 0) = J_camera;
+                _jacobianOplusXj.block<1, 3>(i, 0) = J_landmark;
+            }   
+        }     
+    }
+```
+
+Here `g2o::SE3Quat` is used to represent the camera pose. The same `CameraWithGradient` class from Assignment 06 is used to implement image gradient and Jacobian with respect to camera pose and landmark position.
+
+##### Up and Running
+
+Compile, and execute the following commands to reproduce the results
+
+```bash
+# go to working directory:
+cd /workspace/assignments/07-backend-optimization/
+# build:
+mkdir build && cd build && cmake .. && make -j4
+# execute:
+./direct_ba
+```
+
+##### Results and Review
+
+The `log` of optimization using analytic Jacobian is as follows. We can see that compared with using default numerical Jacobian, **using the optimized analytic Jacobian can greatly accelerate the optimization process**.
+
+```bash
+# problem overview
+[Direct BA]: num. of observations -- 7, num. of landmarks -- 4118
+iteration= 0	 chi2= 12192412.652936	 time= 3.80948	 cumTime= 3.80948	 edges= 20350	 schur= 1	 lambda= 22554.007402	 levenbergIter= 1
+iteration= 1	 chi2= 12131178.617487	 time= 3.83759	 cumTime= 7.64707	 edges= 20350	 schur= 1	 lambda= 15036.004935	 levenbergIter= 1
+iteration= 2	 chi2= 12066738.777211	 time= 3.86033	 cumTime= 11.5074	 edges= 20350	 schur= 1	 lambda= 10024.003290	 levenbergIter= 1
+iteration= 3	 chi2= 12020180.560499	 time= 3.92555	 cumTime= 15.433	 edges= 20350	 schur= 1	 lambda= 6682.668860	 levenbergIter= 1
+iteration= 4	 chi2= 11970006.841497	 time= 3.92406	 cumTime= 19.357	 edges= 20350	 schur= 1	 lambda= 4455.112573	 levenbergIter= 1
+iteration= 5	 chi2= 11933109.813218	 time= 4.18036	 cumTime= 23.5374	 edges= 20350	 schur= 1	 lambda= 2970.075049	 levenbergIter= 1
+iteration= 6	 chi2= 11892790.060755	 time= 4.16817	 cumTime= 27.7055	 edges= 20350	 schur= 1	 lambda= 1980.050033	 levenbergIter= 1
+iteration= 7	 chi2= 11871228.270682	 time= 4.02321	 cumTime= 31.7288	 edges= 20350	 schur= 1	 lambda= 1320.033355	 levenbergIter= 1
+iteration= 8	 chi2= 11853845.254105	 time= 4.3106	 cumTime= 36.0393	 edges= 20350	 schur= 1	 lambda= 880.022237	 levenbergIter= 1
+iteration= 9	 chi2= 11843124.207989	 time= 3.99954	 cumTime= 40.0389	 edges= 20350	 schur= 1	 lambda= 586.681491	 levenbergIter= 1
+...
+```
+
+---
+
+The view of the optimized scene is shown below
+
+<img src="02-direct-ba/doc/optimized-scene.png" alt="Optimized Scene" width="100%">
+
+---
+
+###### Could the position of landmark be parameterized in a different way?
+###### 能否不要以[x, y, z]的形式参数化每个点?
+
+###### Is 4-by-4 patch a good choice for this problem? What is the reason behind choosing a smaller or larger patch?
+###### 取4x4的patch好吗?取更大的 patch 好还是取小一点的 patch 好?
+
+###### What is the difference of BA implementation between direct method and bundle adjustment?
+###### 从本题中,你看到直接法与特征点法在BA阶段有何不同?
+
+###### For direct method robust kernel, i.e., Huber kernel, might be needed. In this case how to select the threshold of Huber kernel?
+###### 由于图像的差异,你可能需要鲁棒核函数,例如 Huber。此时 Huber 的阈值如何选取?

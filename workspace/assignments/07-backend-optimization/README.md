@@ -32,6 +32,16 @@ mkdir build && cd build && cmake .. && make -j8
 #### 1.a Research Review
 #### 1.a 文献综述
 
+##### Why the claim 'Bundle adjustment is slow' is not correct?
+##### 为何说 Bundle Adjustment is slow 是不对的?
+
+TBD
+
+##### How could pose and point be parameterized? What are the pros and cons of each method?
+##### BA中有哪些需要注意参数化的地方?Pose 和 Point 各有哪些参数化方式?有何优缺点。
+
+TBD
+
 ---
 
 #### 1.b BAL-dataset
@@ -213,13 +223,63 @@ The view of `King's Landing, Dubrovnik-16` is shown below
 ##### How to Describe the Error of Landmark Projection?
 ##### 如何描述任意一点投影在任意一图像中形成的 error?
 
-The error term can be defined as follows:
+See the following code snippet:
+
+```c++
+    // first, project landmark to pixel frame:
+    Eigen::Vector2d p_anchor = vertex_camera->estimate().Project(X);
+
+    // get intensity for each pixel inside surrounding patch:
+    Vector16d I_camera;
+    for (int dx = -HALF_PATCH_SIZE; dx < HALF_PATCH_SIZE; ++dx) {
+        for (int dy = -HALF_PATCH_SIZE; dy < HALF_PATCH_SIZE; ++dy) {
+            // get linear index:
+            int i = (dx + HALF_PATCH_SIZE) * (HALF_PATCH_SIZE << 1) + (dy + HALF_PATCH_SIZE);
+
+            // get current pixel:
+            Eigen::Vector2d p(
+                p_anchor.x() + dx,
+                p_anchor.y() + dy
+            );
+
+            // get pixel intensity:
+            I_camera[i] = vertex_camera->estimate().GetIntensity(p);
+        }
+    }
+
+    // set error:
+    _error = I_camera - _measurement;
+```
 
 ##### How Many Variables Are Associated with the Error?
 ##### 每个 error 关联几个优化变量?
 
+Error是`相机位姿`与`Landmark位置`的函数，前者为`6`维变量，后者为`3`维变量.
+
 ##### What is the Jacobian of Each Variable?
 ##### error 关于各变量的雅可比是什么?
+
+Error关于`相机位姿`与`Landmark位置`的Jacobian，均可表示为`图像梯度`与另一矩阵的乘积，其中
+
+* 关于`相机位姿`的矩阵如下图所示
+
+<img src="02-direct-ba/doc/jacobian-for-camera-pose.png" alt="Jacobian with respect to Camera Pose" width="100%">
+
+* 关于`Landmark位置`的矩阵由下式定义:
+
+```c++
+J_position = J_intermediate * T_.rotation().toRotationMatrix() * J_position_parameterization;
+```
+
+其中:
+
+`J_intermediate`定义如下图所示:
+
+<img src="02-direct-ba/doc/jacobian-for-camera-frame-point.png" alt="Jacobian with respect to Point Position in Camera Frame" width="100%">
+
+`J_position_parameterization`定义如下图所示，为`逆深度化`后位置相对于参数的Jacobian.
+
+<img src="02-direct-ba/doc/jacobian-for-camera-frame-point.png" alt="Jacobian with respect to Point Position in Camera Frame" width="100%">
 
 ---
 
@@ -300,16 +360,16 @@ The `log` of optimization using analytic Jacobian is as follows. We can see that
 ```bash
 # problem overview
 [Direct BA]: num. of observations -- 7, num. of landmarks -- 4118
-iteration= 0	 chi2= 12192412.652936	 time= 3.80948	 cumTime= 3.80948	 edges= 20350	 schur= 1	 lambda= 22554.007402	 levenbergIter= 1
-iteration= 1	 chi2= 12131178.617487	 time= 3.83759	 cumTime= 7.64707	 edges= 20350	 schur= 1	 lambda= 15036.004935	 levenbergIter= 1
-iteration= 2	 chi2= 12066738.777211	 time= 3.86033	 cumTime= 11.5074	 edges= 20350	 schur= 1	 lambda= 10024.003290	 levenbergIter= 1
-iteration= 3	 chi2= 12020180.560499	 time= 3.92555	 cumTime= 15.433	 edges= 20350	 schur= 1	 lambda= 6682.668860	 levenbergIter= 1
-iteration= 4	 chi2= 11970006.841497	 time= 3.92406	 cumTime= 19.357	 edges= 20350	 schur= 1	 lambda= 4455.112573	 levenbergIter= 1
-iteration= 5	 chi2= 11933109.813218	 time= 4.18036	 cumTime= 23.5374	 edges= 20350	 schur= 1	 lambda= 2970.075049	 levenbergIter= 1
-iteration= 6	 chi2= 11892790.060755	 time= 4.16817	 cumTime= 27.7055	 edges= 20350	 schur= 1	 lambda= 1980.050033	 levenbergIter= 1
-iteration= 7	 chi2= 11871228.270682	 time= 4.02321	 cumTime= 31.7288	 edges= 20350	 schur= 1	 lambda= 1320.033355	 levenbergIter= 1
-iteration= 8	 chi2= 11853845.254105	 time= 4.3106	 cumTime= 36.0393	 edges= 20350	 schur= 1	 lambda= 880.022237	 levenbergIter= 1
-iteration= 9	 chi2= 11843124.207989	 time= 3.99954	 cumTime= 40.0389	 edges= 20350	 schur= 1	 lambda= 586.681491	 levenbergIter= 1
+iteration= 0	 chi2= 11709513.181378	 time= 4.97691	 cumTime= 4.97691	 edges= 20350	 schur= 1	 lambda= 19307.260505	 levenbergIter= 1
+iteration= 1	 chi2= 11281311.112867	 time= 5.00041	 cumTime= 9.97732	 edges= 20350	 schur= 1	 lambda= 12871.507004	 levenbergIter= 1
+iteration= 2	 chi2= 10928395.085010	 time= 4.89385	 cumTime= 14.8712	 edges= 20350	 schur= 1	 lambda= 8581.004669	 levenbergIter= 1
+iteration= 3	 chi2= 10605438.995530	 time= 5.02336	 cumTime= 19.8945	 edges= 20350	 schur= 1	 lambda= 5720.669779	 levenbergIter= 1
+iteration= 4	 chi2= 10442832.734313	 time= 4.80786	 cumTime= 24.7024	 edges= 20350	 schur= 1	 lambda= 3813.779853	 levenbergIter= 1
+iteration= 5	 chi2= 10316638.329342	 time= 4.77102	 cumTime= 29.4734	 edges= 20350	 schur= 1	 lambda= 2542.519902	 levenbergIter= 1
+iteration= 6	 chi2= 10219616.467065	 time= 4.78031	 cumTime= 34.2537	 edges= 20350	 schur= 1	 lambda= 1695.013268	 levenbergIter= 1
+iteration= 7	 chi2= 10129821.049019	 time= 4.73212	 cumTime= 38.9859	 edges= 20350	 schur= 1	 lambda= 1130.008845	 levenbergIter= 1
+iteration= 8	 chi2= 9963265.545933	 time= 4.8531	 cumTime= 43.839	 edges= 20350	 schur= 1	 lambda= 753.339230	 levenbergIter= 1
+iteration= 9	 chi2= 9858591.421873	 time= 4.79499	 cumTime= 48.634	 edges= 20350	 schur= 1	 lambda= 502.226153	 levenbergIter= 1
 ...
 ```
 
@@ -324,11 +384,22 @@ The view of the optimized scene is shown below
 ###### Could the position of landmark be parameterized in a different way?
 ###### 能否不要以[x, y, z]的形式参数化每个点?
 
+能，且最好不要直接使用坐标参数化点, 因为这样会导致Landmark坐标值发生大幅度的变化。本次作业中采用了推荐的`逆深度化`方式参数化点的坐标. 具体实现参见前述`数学模型`相关章节.
+
 ###### Is 4-by-4 patch a good choice for this problem? What is the reason behind choosing a smaller or larger patch?
 ###### 取4x4的patch好吗?取更大的 patch 好还是取小一点的 patch 好?
+
+在直接法灰度不变假设成立的前提下，更大的Patch意味着更加稳定的误差估计，但当假设不完全成立时，选择小一点的Patch，可以降低灰度变化对误差项的影响。
 
 ###### What is the difference of BA implementation between direct method and bundle adjustment?
 ###### 从本题中,你看到直接法与特征点法在BA阶段有何不同?
 
+`特征点法`依靠Landmark重投影在像素平面的坐标来引导优化，然而`直接法`依靠Landmark重投影周围Patch的图像梯度来引导优化.
+
 ###### For direct method robust kernel, i.e., Huber kernel, might be needed. In this case how to select the threshold of Huber kernel?
 ###### 由于图像的差异,你可能需要鲁棒核函数,例如 Huber。此时 Huber 的阈值如何选取?
+
+HuberKernel的阈值，定义了怎样的Patch是`近似灰度不变`的，因为仅当误差小于该阈值时，会产生较为显著的更新量. HuberKernel阈值可以如下决定:
+
+* 首先确定每个Pixel Intensity最大允许的差值，记为dI;
+* 则根据误差以及二范数的定义，HuberKernel的阈值应取为4*dI.

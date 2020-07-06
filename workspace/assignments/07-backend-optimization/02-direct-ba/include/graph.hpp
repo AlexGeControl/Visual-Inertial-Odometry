@@ -57,9 +57,9 @@ public:
     }
 
     virtual void oplusImpl(const double *update) override {
-        Eigen::Vector3d dX(update[0], update[1], update[2]);
+        Eigen::Vector3d dP(update[0], update[1], update[2]);
 
-        _estimate.UpdatePosition(dX);
+        _estimate.UpdatePosition(dP);
     }
 
     virtual bool read(std::istream &in) {}
@@ -128,7 +128,10 @@ public:
         Eigen::Matrix<double, 2, 6> J_pose;
         Eigen::Matrix<double, 2, 3> J_position;
         vertex_camera->estimate().GetJacobians(X, J_pose, J_position);
-
+        Eigen::Matrix3d J_position_parameterization;
+        vertex_landmark->estimate().GetJacobian(J_position_parameterization);
+        J_position = J_position * J_position_parameterization;
+        
         Eigen::Vector2d p_anchor = vertex_camera->estimate().Project(X);
         for (int dx = -HALF_PATCH_SIZE; dx < HALF_PATCH_SIZE; ++dx) {
             for (int dy = -HALF_PATCH_SIZE; dy < HALF_PATCH_SIZE; ++dy) {

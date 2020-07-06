@@ -43,9 +43,9 @@ float cy = 239.777;
 
 // half patch size:
 const int HALF_PATCH_SIZE = 2;
-const int MAX_ITERATIONS = 25;
-const int ITERATION_STEP_SIZE = 25;
-const double HUBER_KERNEL_THRESHOLD = 1.0;
+const int MAX_ITERATIONS = 10;
+const int ITERATION_STEP_SIZE = 10;
+const double HUBER_KERNEL_THRESHOLD = 12.0;
 
 // plot the poses and points for you, need pangolin
 void Draw(std::vector<CameraWithObservation> &camera_observations, std::vector<Landmark> &landmarks) {
@@ -218,7 +218,7 @@ int main(int argc, char **argv) {
         v->setId(i + camera_observations.size());
         v->setEstimate(landmarks.at(i));
         v->setMarginalized(true);
-        v->setFixed(true);
+        // v->setFixed(true);
         optimizer.addVertex(v);
 
         vertex_landmarks.push_back(v);

@@ -68,6 +68,8 @@ However, the deep-learning based method has very high computing workload and dep
 
 The solution is available at (click to follow the link) [here](01-rotation-update/rotation_update.cpp)
 
+`Note`: The actual computation happens inside `Sophus::SO3`, during initialization the input quaternion has already BEEN NORMALIZED. So no extra normalization is needed.
+
 ```c++
     // generate random rotation matrix:
     RandomAngle random_angle(-M_PI, +M_PI);

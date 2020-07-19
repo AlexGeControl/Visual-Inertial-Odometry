@@ -1,0 +1,8 @@
+<launch>
+    <node pkg="calibration" type="calibration_node" name="imu_calibration_node" clear_params="true">
+        <!-- load default params -->
+        <rosparam command="load" file="$(find calibration)/config/calibration.yaml" />
+
+        <!-- configuration -->
+    </node>
+</launch>

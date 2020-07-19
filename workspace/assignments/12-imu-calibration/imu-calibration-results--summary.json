@@ -1,0 +1,10 @@
+{
+    "acc": {
+        "measurement_noise_stddev": 0.01880, 
+        "bias_random_walk_stddev": 3.559e-04
+    }, 
+    "gyro": {
+        "measurement_noise_stddev": 0.01468, 
+        "bias_random_walk_stddev": 3.436e-05
+    }
+}

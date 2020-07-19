@@ -1,0 +1,10 @@
+debug_mode: true
+max_playback_rate: 120
+
+imu:
+    device_name: VIO_IMU
+    topic_name: /imu
+    allan_variance_curve:
+        output_filename: /workspace/imu-calibration/imu-calibration-results
+        min_collection_time_in_mins: 120
+        max_num_clusters: 100

@@ -1,0 +1,17 @@
+pose:
+    frame_id: inertial
+    topic_name:
+        ground_truth: /pose/ground_truth
+        integrated: /pose/imu_integrated
+
+imu:
+    device_name: VIO_IMU
+    topic_name: /imu
+    frame_id: ENU
+    calibration_mode: true
+    gyro:
+        sigma_bias: 5e-5
+        sigma_noise: 0.015
+    acc:
+        sigma_bias: 5e-4
+        sigma_noise: 0.019

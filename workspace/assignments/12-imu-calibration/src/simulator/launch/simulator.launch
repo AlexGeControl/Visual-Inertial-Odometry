@@ -1,0 +1,9 @@
+<launch>
+    <node pkg="tf" type="static_transform_publisher" name="ENU_broadcaster" args="0 0 0 0 0 0 inertial ENU 200" />
+    <node pkg="simulator" type="simulator_node" name="imu_simulator_node" clear_params="true">
+        <!-- load default params -->
+        <rosparam command="load" file="$(find simulator)/config/simulator.yaml" />
+
+        <!-- configuration -->
+    </node>
+</launch>

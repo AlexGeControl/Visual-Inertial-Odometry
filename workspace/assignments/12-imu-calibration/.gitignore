@@ -3,5 +3,5 @@
 build
 devel
 logs
+install
 *.bag
-*.png

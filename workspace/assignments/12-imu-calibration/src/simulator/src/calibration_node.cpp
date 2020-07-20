@@ -35,5 +35,5 @@ int main(int argc, char** argv) {
     bag.close();
     std::cout << "Done, save to " << bag_path <<std::endl;
 
-    return 0;
+    return EXIT_SUCCESS;
 }

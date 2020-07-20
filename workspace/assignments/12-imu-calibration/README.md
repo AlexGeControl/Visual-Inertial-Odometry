@@ -39,15 +39,22 @@ Finally, setup the session for solution stack with the command below. Then you a
 source install/setup.bash
 ```
 
+--
+
+## Solutions
+
+### 1. Calibrate IMU with Allan Variance Analysis
+### 1. 生成 Allen 方差标定曲线
+
 ---
 
-## Up & Running
+#### Up & Running
 
 First, **generate the simulated IMU measurement for Allan Variance calibration** by:
 
 ```bash
 # generate simulated static IMU measurement for Allan Variance calibration:
-roslaunch simulator simulator.launch
+roslaunch simulator calibration.launch
 ```
 
 Then get the `calibration results`(in JSON) and `Allan Variance curve`(in CSV) using the command below:
@@ -57,12 +64,9 @@ Then get the `calibration results`(in JSON) and `Allan Variance curve`(in CSV) u
 roslaunch calibration calibration.launch
 ```
 
---
+---
 
-## Solutions
-
-### 1. Calibrate IMU with Allan Variance Analysis
-### 1. 生成 Allen 方差标定曲线
+#### Results
 
 原始标定结果请参见:
 
@@ -71,7 +75,7 @@ roslaunch calibration calibration.launch
 
 绘制曲线所用的脚本参见[Here](src/calibration/calibration/visualize.py):
 
-#### Gyroscope
+##### Gyroscope
 
 `Gyroscope`的标定结果如下. 测量噪声能够得到较精准的估计, Bias的随机游走能精准到数量级
 
@@ -88,7 +92,7 @@ roslaunch calibration calibration.launch
 
 <img src="doc/imu-calibration-results--gyro.png" alt="Allan Variance Curve, Gyroscope" width="100%">
 
-#### accelerometer
+##### accelerometer
 
 `Accelerometer`的标定结果如下. 测量噪声能够得到较精准的估计, Bias的随机游走能精准到数量级
 
@@ -110,7 +114,60 @@ roslaunch calibration calibration.launch
 ### 2. IMU Integrated Odometry with Euler & Mid-Value Integration
 ### 2. 将IMU仿真代码中的欧拉积分替换成中值积分
 
-TBD
+#### Up & Running
+
+First, launch the `odometry comparison node` by:
+
+```bash
+# publish ground truth odometry and IMU integrated odometry:
+roslaunch simulator odom_comparison.launch
+```
+
+Then visualize the two trajectories using:
+
+```bash
+# launch RViz:
+rviz -d src/simulator/rviz/odom_comparison.rviz
+```
+
+---
+
+#### Results
+
+中值积分的实现如下(完整代码参见[here](src/simulator/src/activity.cpp)):
+
+```c++
+    // update position:
+    Eigen::Vector3d linear_acc_curr = R_integrated_*(linear_acc_ - linear_acc_bias_) - G_;
+    Eigen::Vector3d linear_acc_mid_value = 0.5*(linear_acc_prev + linear_acc_curr);
+
+    t_integrated_ = t_integrated_ + delta_t*v_integrated_ + 0.5*delta_t*delta_t*linear_acc_mid_value;
+    v_integrated_ = v_integrated_ + delta_t*linear_acc_mid_value;
+
+    // update orientation:
+    Eigen::Vector3d angular_vel_curr = angular_vel_ - angular_vel_bias_;
+    Eigen::Vector3d angular_vel_mid_value = 0.5*(angular_vel_prev + angular_vel_curr);
+
+    Eigen::Vector3d da = 0.5*delta_t*angular_vel_mid_value;
+    Eigen::Quaterniond dq(1.0, da.x(), da.y(), da.z());
+    Eigen::Quaterniond q(R_integrated_);
+
+    q = q*dq;
+    R_integrated_ = q.normalized().toRotationMatrix();
+
+    // move forward:
+    angular_vel_prev = angular_vel_curr;
+    linear_acc_prev = linear_acc_curr;
+```
+
+积分得到的轨迹与Ground Truth的对比如下:
+
+* 在`有噪声`的情况下，积分得到的轨迹会快速发散.
+* 即使在`无噪声`的情况下, 由于浮点误差的累计, 积分得到的轨迹也会很快发散. 
+
+因此**IMU仅适合估计短时间内的运动**.
+
+<img src="doc/integrated-and-groud-truth-odoms.png" alt="Integrated Odometry & Ground Truth Odometry" width="100%">
 
 ---
 

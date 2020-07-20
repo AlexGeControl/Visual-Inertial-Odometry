@@ -18,11 +18,11 @@ namespace imu {
 
 namespace simulator {
 
-struct Config {
-    // device info:
+struct IMUConfig {
+    // general info:
     std::string device_name;
-    std::string topic_name;
     std::string frame_id;
+    std::string topic_name;
 
     // mode:
     bool calibration_mode;
@@ -34,10 +34,18 @@ struct Config {
     // linear acceleration noises:
     double acc_bias_stddev;
     double acc_noise_stddev;
+};
 
-    // pose:
-    std::string pose_frame_id;
-    std::string pose_topic_name_ground_truth;
+struct OdomConfig {
+    OdomConfig() : initialized(false) {}
+
+    // general info:
+    std::string frame_id;
+    std::string topic_name_ground_truth;
+    std::string topic_name_integrated;
+
+    // set the initial pose of integrated odometry using ground truth:
+    bool initialized;
 };
 
 class Activity {
@@ -53,20 +61,26 @@ private:
     // random walk & measurement noise generation:
     Eigen::Vector3d GetGaussianNoise(double stddev);
     void AddNoise(double delta_t);
-    // pose from integration:
-    void UpdatePose(void);
+    // update pose with integration:
+    void UpdatePoseIntegration(double delta_t);
 
     // convert to ROS messages:
-    void ToIMUMessage(sensor_msgs::Imu &message);
-    void ToGroundTruthPose(nav_msgs::Odometry &message);
+    void UpdateIMUMessage(void);
+    void UpdateOdometryMessage(
+        const Eigen::Matrix3d &R, const Eigen::Vector3d &t,
+        nav_msgs::Odometry &message
+    );
 
     ros::NodeHandle private_nh_;
 
     ros::Publisher pub_;
-    ros::Publisher pub_pose_ground_truth_;
+    // TODO: separate odometry estimation from IMU device
+    ros::Publisher pub_odom_ground_truth_;
+    ros::Publisher pub_odom_integrated_;
 
     // config:
-    Config config_;
+    IMUConfig imu_config_;
+    OdomConfig odom_config_;
 
     // noise generator:
     std::default_random_engine normal_generator_;
@@ -77,8 +91,9 @@ private:
     // a. gravity constant:
     Eigen::Vector3d G_;
     // b. pose:
-    Eigen::Matrix3d R_;
-    Eigen::Vector3d t_;
+    Eigen::Matrix3d R_gt_, R_integrated_;
+    Eigen::Vector3d t_gt_, t_integrated_;
+    Eigen::Vector3d v_gt_, v_integrated_;
     // c. angular velocity:
     Eigen::Vector3d angular_vel_;
     Eigen::Vector3d angular_vel_bias_;
@@ -86,7 +101,8 @@ private:
     Eigen::Vector3d linear_acc_;
     Eigen::Vector3d linear_acc_bias_;
     // ROS IMU message:
-    sensor_msgs::Imu message_;
+    sensor_msgs::Imu message_measurement_;
+
     nav_msgs::Odometry message_groud_truth_pose_;
     nav_msgs::Odometry message_integrated_pose_;
 };

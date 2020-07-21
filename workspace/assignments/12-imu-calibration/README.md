@@ -174,7 +174,37 @@ rviz -d src/simulator/rviz/odom_comparison.rviz
 ### 3. Generate Trajectory using B-Spline
 ### 3. 使用B-Spline从已有轨迹生成IMU数据
 
-TBD
+---
 
+#### Prerequisites
 
+Below are the materials I used to gain the prerequisite knowledge needed to understand the [paper](doc/references/00-spline-fusion-for-vio-fusion.pdf)
+
+* `Interpolation in SE3` [here](doc/references/01-rotations-and-rigid-body-motions.pdf)
+* `B-Spline Basis Functions: Definition` [here](https://pages.mtu.edu/~shene/COURSES/cs3621/NOTES/spline/B-spline/bspline-basis.html)
+* `B-Spline Hands On` [here](https://opensourc.es/blog/b-spline/)
+* `B-Spline Matrix Representation` [here](http://www2.cs.uregina.ca/~anima/408/Notes/Interpolation/UniformBSpline.htm)
+
+---
+
+#### Core Ideas
+
+---
+
+**First**, one possible strategy for `interpolation in SE3`, which uses the linear interpolation strategy in corresponding se3, is as follows:
+
+<img src="doc/b-spline-derivation/01-interpolation-in-SE3.png" alt="Interpolation in SE3" width="100%">
+
+That is, `the required pose between the two end poses can be linearly interpolated in se3`.
+
+---
+
+Since we need analytics expressions for IMU measurements, which are derived from trajectory representation, we hope that `the first and second order derivatives(angular velocity and linear acceleration measurements, respectively) of interpolated trajectory should be continuous` 
+
+We can use **cubic B-Spline** to meet the above requirements:
+
+* The interpolated trajectory will transit smoothly between `control poses`.
+* B-Spline of order `3` is the minimum required basis function for `second order derivative continuity`.
+
+---
 

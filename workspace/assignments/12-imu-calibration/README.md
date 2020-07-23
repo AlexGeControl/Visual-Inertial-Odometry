@@ -191,7 +191,7 @@ Below are the materials I used to gain the prerequisite knowledge needed to unde
 
 ---
 
-**First**, one possible strategy for `interpolation in SE3`, which uses the linear interpolation strategy in corresponding se3, is as follows:
+**First**, one possible strategy for `interpolation in SE3`, which mimics the linear interpolation strategy in se3(see *Matrix Lie Group, State Estimation for Robotics, Timothy D. Barfoot*), is as follows:
 
 <img src="doc/b-spline-derivation/01-interpolation-in-SE3.png" alt="Interpolation in SE3" width="100%">
 
@@ -207,4 +207,52 @@ We can use **cubic B-Spline** to meet the above requirements:
 * B-Spline of order `3` is the minimum required basis function for `second order derivative continuity`.
 
 ---
+
+Using `standard B-Spline basis functions`, the interploated curve can be represented as:
+
+<img src="doc/b-spline-derivation/03-standard-b-spline-basis-functions.png" alt="Cumulative B-Spline Basis Functions" width="100%">
+
+In order to use the pose interpolation strategy in `section 1`, the above expression can be transformed to that using `cumulative B-Spline basis functions` as follows:
+
+<img src="doc/b-spline-derivation/03-cumulative-b-spline-basis-functions.png" alt="Standard B-Spline Basis Functions" width="100%">
+
+Apply the above expression to formula in `section 1`, we have:
+
+<img src="doc/b-spline-derivation/03-se3-interpolation.png" alt="Interpolation in se3" width="100%">
+
+---
+
+From `B-Spline Matrix Representation` [here](http://www2.cs.uregina.ca/~anima/408/Notes/Interpolation/UniformBSpline.htm), we have the `matrix representation for standard 3-order B-spline basis functions` as
+
+<img src="doc/b-spline-derivation/04-standard-matrix-representation.png" alt="Matrix Representation, Standard B-Spline Basis Function" width="100%">
+
+By applying the definion of cumulative B-Spline basis functions, we have the `matrix representation for cumulative 3-order B-Spline basis functions` as
+
+<img src="doc/b-spline-derivation/04-cumulative-matrix-representation.png" alt="Matrix Representation, Cumulative B-Spline Basis Function" width="100%">
+
+For each timestamp `t`, the `4 control poses` are defined as:
+
+<img src="doc/b-spline-derivation/04-control-poses.png" alt="Control Poses Definition" width="100%">
+
+For each timestamp `t`, the corresponding interpolation variable is defined as `u = t - t_i, t_i <= t <= t_i+1`.
+
+With the above definition, we have the basis function for each time interval as:
+
+<img src="doc/b-spline-derivation/05-basis-function-for-interval-ti.png" alt="Basis Function for Interval t_i" width="100%">
+
+And corresponding derivatives:
+
+<img src="doc/b-spline-derivation/05-derivative-of-basis-functions.png" alt="Derivatives for Interval t_i" width="100%">
+
+---
+
+Finally, with the above equations, we'll have the trivial expression for `IMU measurements` as
+
+<img src="doc/b-spline-derivation/06-IMU-measurement.png" alt="IMU Measurements" width="100%">
+
+
+
+
+
+
 

@@ -1,0 +1,12 @@
+curve_fitting:
+    curve:
+        a: 3.0
+        b: 2.0
+        c: 1.0
+    measurement:
+        N: 5000
+        sigma: 1.0
+    problem: exp
+    optimization:
+        lambda_scheduling: 1
+        max_iterations: 100

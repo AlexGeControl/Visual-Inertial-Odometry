@@ -1,0 +1,8 @@
+<launch>
+    <node pkg="curve_fitting" type="curve_fitting" name="curve_fitting" clear_params="true">
+        <!-- load default params -->
+        <rosparam command="load" file="$(find curve_fitting)/config/curve_fitting.yaml" />
+
+        <!-- configuration -->
+    </node>
+</launch>

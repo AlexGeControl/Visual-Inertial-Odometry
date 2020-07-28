@@ -205,6 +205,16 @@ So to sum up, the `Nielsen` strategy should still be used and the `alpha` strate
 
 <img src="doc/problem-statement/02-derivation-of-jacobian.png" alt="Derivation of Jacobian" width="100%">
 
+#### Derivation
+
+The derivation of `all the terms` in `error propagation` is available [here](doc/bundle-adjustment/error-propagation/README.md)
+
+The two terms required by assignment are shown below:
+
+<img src="doc/bundle-adjustment/error-propagation/alpha/F15.png" alt="F15, Error Propagation" width="100%">
+
+<img src="doc/bundle-adjustment/error-propagation/alpha/G12.png" alt="G12, Error Propagation" width="100%">
+
 ---
 
 ### 3. Solution Using Damping Factor

@@ -207,6 +207,8 @@ So to sum up, the `Nielsen` strategy should still be used and the `alpha` strate
 
 #### Derivation
 
+The derivation of `all the terms` in `error optimization` is available [here](doc/bundle-adjustment/optimization/README.md)
+
 The derivation of `all the terms` in `error propagation` is available [here](doc/bundle-adjustment/error-propagation/README.md)
 
 The two terms required by assignment are shown below:

@@ -17,17 +17,36 @@ System's `motion constraints` and `landmark observations` are defined as follows
 
 <img src="doc/problem-statement/01-system-setup.png" alt="VIO Problem Setup" width="100%">
 
+First, define `system state` and `optimization error terms` as follows:
+
+<img src="doc/01-vio-information-matrix/state-definition.png" alt="System State" width="100%">
+
+<img src="doc/01-vio-information-matrix/error-terms.png" alt="Error Terms" width="100%">
+
 #### a. Visualize System Information Matrix
 #### a. 绘制系统的信息矩阵
 
+The initial system information matrix is shown below:
+
+<img src="doc/01-vio-information-matrix/initial-information-matrix.png" alt="Initial Information Matrix" width="100%">
+
 #### b. Visualize System Information Matrix After Pose 1 Have Been Marginalized
 #### b. 绘制系统位姿1被边缘化后的信息矩阵
+
+After marginalization of `pose 1`, the system information matrix is changed to:
+
+<img src="doc/01-vio-information-matrix/marginalized-information-matrix.png" alt="Marginalized Information Matrix" width="100%">
+
 ---
 
 ### 2. Relationship between the Hessian and Covariance Matrix for Gaussian Random Variable
 ### 2. 证明多元高斯分布信息矩阵与协方差之间的逆矩阵关系
 
 #### Derivation
+
+The `general relationship for standard multivariate Gaussian` and `specialized relationship for bundle adjustment` is summarized in the picture below
+
+<img src="doc/02-hessian-and-covariance-matrix/hessian-and-information-matrix.png" alt="Loss Hessian and Information Matrix" width="100%">
 
 ---
 

@@ -469,7 +469,7 @@ void Problem::ComputeLambdaInitLM() {
     for (ulong i = 0; i < size; ++i) {
         maxDiagonal = std::max(fabs(Hessian_(i, i)), maxDiagonal);
     }
-    double tau = 100.0;
+    double tau = 1e-5;
     currentLambda_ = tau * maxDiagonal;
 }
 

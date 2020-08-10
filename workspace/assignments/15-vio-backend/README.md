@@ -353,3 +353,68 @@ The three strategies have similar estimation error on both `simulated` and `real
 
 ### 3. Implement Gauge Prior Strategy and Compare the Effect of Different Weights
 ### 3. 在代码中给第一帧和第二帧添加prior约束, 并比较为prior设定不同权重时, BA求解收敛精度和速度
+
+#### Results
+
+Below is the result of `accuracy` and `computational effort` under different prior weight of `information matrix`
+
+| Prior Weight | Problem Solve Cost / ms | MakeHessian Cost / ms | RMSE, Landmark | RMSE, Camera Position |
+|:------------:|:-----------------------:|:---------------------:|:--------------:|:---------------------:|
+|    6.25e-2   |         101.853         |         82.496        |     0.0021     |         0.1030        |
+|    1.25e-1   |         109.529         |        88.4697        |     0.0022     |         0.1015        |
+|    2.5e-1    |         99.9498         |        81.4395        |     0.0022     |         0.0991        |
+|     5e-1     |         95.3707         |        77.9149        |     0.0023     |         0.0967        |
+|       1      |         103.553         |        84.4058        |     0.0025     |         0.0966        |
+|       5      |         132.2900        |        108.5080       |     0.0027     |         0.1147        |
+|      10      |         123.7580        |        101.4130       |     0.0027     |         0.1305        |
+|      25      |         115.2990        |        94.9124        |     0.0031     |         0.1629        |
+|      50      |         69.8729         |        57.5055        |     0.0048     |         0.2004        |
+
+The experimental results are summarized as follows:
+
+* The prior weight has a significant impact on `computing speed`. The larger the prior weight of information matrix, the shorter the time that is needed for optimization to converge. This agrees very well with the recommanded paper.
+
+* However, the actual optimization time is also sensitive to the solver config. Under current problem setup it attains the best estimation accuracy when `prior weight equals 1.0`
+
+#### Implementation
+
+The full source code can be found [here](app/TestMonoBA.cpp). Below is the code snippet for core computing 
+
+```c++
+    // add poses:
+    MatXX H(MatXX::Zero(6, 6));
+    for (size_t i = 0; i < 6; ++i) {
+        H(i, i) = PRIOR_WEIGHT;
+    }
+
+    vector<shared_ptr<VertexPose> > vertexCams_vec;
+    for (size_t i = 0; i < cameras.size(); ++i) {
+        shared_ptr<VertexPose> vertexCam(new VertexPose());
+        Eigen::VectorXd pose(7);
+        pose << cameras[i].twc, cameras[i].qwc.x(), cameras[i].qwc.y(), cameras[i].qwc.z(), cameras[i].qwc.w();
+        vertexCam->SetParameters(pose);
+
+        problem.AddVertex(vertexCam);
+        vertexCams_vec.push_back(vertexCam);
+
+        if(i < 2) {
+            // strategy 2: gauge prior
+            shared_ptr<EdgeSE3Prior> edge(
+                new EdgeSE3Prior(
+                    cameras_gt[i].twc, cameras_gt[i].qwc
+                )
+            );
+
+            std::vector<std::shared_ptr<Vertex>> edge_vertex;
+            edge_vertex.push_back(vertexCams_vec[i]);
+            edge->SetVertex(edge_vertex);
+            
+            // set information matrix:
+            edge->SetInformation(H);
+
+            problem.AddEdge(edge);
+        }
+    }
+```
+
+Here the prior distribution is set using `ground truth camera pose`.

@@ -310,6 +310,9 @@ The full source code can be found [here](backend/problem.cc). Below is the code 
 ### 2. Summarize the Gauge-Free Handling in Optimization for VIO
 ### 2. 请总结[论文](doc/on-the-comparison-of-gauge-free-handling-of-vio-optimization.pdf)优化过程中处理H自由度的不同操作方式。内容包括: 具体处理方式,实验效果,结论
 
+#### Gauge-Free Handling Strategy
+#### 处理方式
+
 Three possible gauge-free handlings are proposed in the paper, namely
 
 * `Gauge Fixation` 
@@ -320,6 +323,31 @@ Three possible gauge-free handlings are proposed in the paper, namely
     * Add a prior to both the first and the second camera poses for Mono Visual Odometry
 * `Gauge Free`
     * Let the full parameter vector evolve freely during the optimization
+
+#### Results
+#### 实验效果
+
+##### a. Accuracy
+##### a. 准确度
+
+The three strategies have similar estimation error on both `simulated` and `real-world` datasets. 
+
+##### b. Computational Effort
+##### b. 计算复杂度
+
+* The `free gauge` approach is slightly faster than the other two because it takes fewer iterations and less time to converge.
+* The `gauge fixation` approach has the least time per iteration due to the smaller number of variables in optimization
+
+#### Conclusions
+#### 结论
+
+* `Accuracy`
+    * The three approaches have almost the same accuracy.
+* `Computational Effor`
+    * The `free gauge` approach is slightly faster than the others because it takes fewer iterations to converge.
+* `Gauge Prior v.s. Gauge Fixation`
+    * With a proper weight, the `gauge prior` approach has almost the same performance as `gauge fixation` approach.
+    * Proper weight is needed to avoid extra computational cost.
 
 ---
 

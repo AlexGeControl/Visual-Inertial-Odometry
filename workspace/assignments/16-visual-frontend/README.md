@@ -15,6 +15,10 @@ This is the solution of Assignment 06 of Hands on VIO from [深蓝学院](https:
 
 <img src="doc/problem-statement/assignment-01.png" alt="Problem Statement, Assignment 01" width="%100">
 
+#### Proof
+
+<img src="doc/01-triangulation/optimality-proof.png" alt="Optimal Solution to Triangulation" width="%100">
+
 ---
 
 ### 2. Implement the Triangulation for Feature Points and Pass the Simulation Test

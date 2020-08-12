@@ -7,66 +7,127 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <Eigen/Eigenvalues>
+#include <Eigen/SVD>
 
 struct Pose
 {
     Pose(Eigen::Matrix3d R, Eigen::Vector3d t):Rwc(R),qwc(R),twc(t) {};
+
+    // orientation:
     Eigen::Matrix3d Rwc;
     Eigen::Quaterniond qwc;
+    // position:
     Eigen::Vector3d twc;
-
-    Eigen::Vector2d uv;    // 这帧图像观测到的特征坐标
+    // observation:
+    Eigen::Vector2d uv;
 };
+
+
 int main()
 {
+    // camera pose config:
+    // a. camera intrinsics
+    const double fx = 1.;
+    const double fy = 1.;
+    // b. motion params:
+    double R = 8;
+    // c. num samples:
+    const size_t N = 10;
 
-    int poseNums = 10;
-    double radius = 8;
-    double fx = 1.;
-    double fy = 1.;
+    // generate camera poses:
     std::vector<Pose> camera_pose;
-    for(int n = 0; n < poseNums; ++n ) {
-        double theta = n * 2 * M_PI / ( poseNums * 4); // 1/4 圆弧
-        // 绕 z轴 旋转
-        Eigen::Matrix3d R;
-        R = Eigen::AngleAxisd(theta, Eigen::Vector3d::UnitZ());
-        Eigen::Vector3d t = Eigen::Vector3d(radius * cos(theta) - radius, radius * sin(theta), 1 * sin(2 * theta));
+    for(size_t n = 0; n < N; ++n ) {
+        // orientation:
+        double theta = n * 2 * M_PI / ( N * 4); // 1/4 圆弧
+        // position:
+        double x = R * cos(theta) - R;
+        double y = R * sin(theta);
+        double z = 1 * sin(2 * theta);
+
+        // format:
+        Eigen::Matrix3d R = Eigen::AngleAxisd(theta, Eigen::Vector3d::UnitZ()).toRotationMatrix();
+        Eigen::Vector3d t = Eigen::Vector3d(x, y, z);
+
+        // update:
         camera_pose.push_back(Pose(R,t));
     }
 
-    // 随机数生成 1 个 三维特征点
+    // generate landmark:
     std::default_random_engine generator;
-    std::uniform_real_distribution<double> xy_rand(-4, 4.0);
-    std::uniform_real_distribution<double> z_rand(8., 10.);
+    std::uniform_real_distribution<double> xy_rand(-4.0,  4.0);
+    std::uniform_real_distribution<double>  z_rand( 8.0, 10.0);
+
     double tx = xy_rand(generator);
     double ty = xy_rand(generator);
-    double tz = z_rand(generator);
+    double tz =  z_rand(generator);
 
     Eigen::Vector3d Pw(tx, ty, tz);
-    // 这个特征从第三帧相机开始被观测，i=3
-    int start_frame_id = 3;
-    int end_frame_id = poseNums;
-    for (int i = start_frame_id; i < end_frame_id; ++i) {
-        Eigen::Matrix3d Rcw = camera_pose[i].Rwc.transpose();
-        Eigen::Vector3d Pc = Rcw * (Pw - camera_pose[i].twc);
+
+    // observe:
+    const size_t start_frame_id = 3;
+    const size_t end_frame_id = N;
+
+    for (size_t i = start_frame_id; i < end_frame_id; ++i) {
+        // project to camera frame:
+        Eigen::Matrix3d Rcw = camera_pose.at(i).Rwc.transpose();
+        Eigen::Vector3d Pc = Rcw*(Pw - camera_pose.at(i).twc);
 
         double x = Pc.x();
         double y = Pc.y();
         double z = Pc.z();
 
-        camera_pose[i].uv = Eigen::Vector2d(x/z,y/z);
+        // project to pixel frame:
+        camera_pose.at(i).uv = Eigen::Vector2d(
+            x/z,
+            y/z
+        );
     }
     
-    /// TODO::homework; 请完成三角化估计深度的代码
-    // 遍历所有的观测数据，并三角化
-    Eigen::Vector3d P_est;           // 结果保存到这个变量
-    P_est.setZero();
-    /* your code begin */
- 
-    /* your code end */
+    // triangulation:
+    const size_t M = end_frame_id - start_frame_id;
+    Eigen::MatrixXd D(2*M, 4);
+
+    for (size_t i = 0; i < M; ++i) {
+        size_t index = start_frame_id + i;
+
+        Eigen::Matrix3d Rcw = camera_pose.at(index).Rwc.transpose();
+        Eigen::Vector3d tcw = -Rcw*camera_pose.at(index).twc;
+        Eigen::MatrixXd Pcw(3, 4);
+
+        Pcw.block<3, 3>(0, 0) = Rcw;
+        Pcw.block<3, 1>(0, 3) = tcw;
+
+        double u = camera_pose.at(index).uv(0);
+        double v = camera_pose.at(index).uv(1);
+
+        D.block<1, 4>(      i << 1, 0) = u*Pcw.block<1, 4>(2, 0) - Pcw.block<1, 4>(0, 0);
+        D.block<1, 4>((i << 1) + 1, 0) = v*Pcw.block<1, 4>(2, 0) - Pcw.block<1, 4>(1, 0); 
+    }
     
-    std::cout <<"ground truth: \n"<< Pw.transpose() <<std::endl;
-    std::cout <<"your result: \n"<< P_est.transpose() <<std::endl;
-    // TODO:: 请如课程讲解中提到的判断三角化结果好坏的方式，绘制奇异值比值变化曲线
-    return 0;
+    // here SVD solver is used since the eigen vector of D.transpose()*D is just V:
+    Eigen::JacobiSVD<Eigen::MatrixXd> svd(D, Eigen::ComputeThinU | Eigen::ComputeThinV);
+    Eigen::VectorXd u_min = svd.matrixV().col(3);
+    // normalize:
+    Eigen::Vector3d P_est(
+        u_min(0) / u_min(3),
+        u_min(1) / u_min(3),
+        u_min(2) / u_min(3)
+    );
+
+    // format output:
+    std::cout.precision(4);
+
+    std::cout << "[Singular Values]:" << std::endl;
+    Eigen::VectorXd singular_values = svd.singularValues();
+    for (size_t i = 0; i < 4; ++i) {
+        std::cout << "\t" << i + 1 << ":" << std::fixed << singular_values(i) << std::endl;
+    }
+    std::cout << "\tQuality Ratio: " << std::fixed << singular_values(2) / singular_values(3) << std::endl;
+
+    std::cout << "[Result Summary]:" << std::endl;
+    std::cout << "\tGround Truth: \n\t\t"<< std::fixed << Pw.transpose() << std::endl;
+    std::cout << "\tEstimation: \n\t\t"<< std::fixed << P_est.transpose() << std::endl;
+    std::cout << "\tError: \n\t\t" << std::fixed << (P_est - Pw).norm() << std::endl;
+    
+    return EXIT_SUCCESS;
 }

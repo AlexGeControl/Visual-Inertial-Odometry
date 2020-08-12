@@ -1,4 +1,4 @@
-# Visual Inertial Odometry: Backend Solver -- 从零开始手写VIO: Backend Solver
+# Visual Inertial Odometry: Visual Frontend -- 从零开始手写VIO: Visual Frontend
 
 This is the solution of Assignment 06 of Hands on VIO from [深蓝学院](https://www.shenlanxueyuan.com/course/247).
 

@@ -24,7 +24,7 @@ This is the solution of Assignment 06 of Hands on VIO from [深蓝学院](https:
 ### 2. Implement the Triangulation for Feature Points and Pass the Simulation Test
 ### 2. 完成特征点三角化代码, 并通过仿真测试
 
-The full source code can be found [here](triangulate.cpp). Below is the code snippet for core triangulation logic: 
+The full source code can be found [here](src/triangulate.cpp). Below is the code snippet for core triangulation logic: 
 
 ```c++
     // triangulation:
@@ -87,7 +87,37 @@ The output is shown below. It can be seen from the result that
 ### 3. Visualize the Ratio Between the Smallest and the Second Smallest Singular Value as Measurement Noise Changes
 ### 3. 请对测量值加上不同噪声, 观察最小奇异值与第二小奇异值之间的比例变化, 并绘制比例变化的曲线
 
----
-
 ### 4. Visualize the Ratio Between the Smallest and the Second Smallest Singular Value as Measurement Window Expands
 ### 4. 固定噪声方差参数, 将观测图像扩展为多帧, 观察最小奇异值和第二小奇异值之间的比例变化, 并绘制比例变化的曲线
+
+A hyper-parameter grid is created for `measurement noise standard deviation` and `sliding window size` in order to evaluate their effect on triangulation quality.
+
+The full source code for `evaluation result generation` [here](src/triangulate.cpp).
+
+The full source code for `evaluation result visualization` [here](scripts/visualize.py).
+
+In order to reproduce the results, execute the following commands:
+
+```bash
+# make executable:
+mkdir build && cd build && cmake .. && make -j4
+# get evaluation results:
+./triangulate -m 1.0 -d 0.05 -s 1
+# below is the execution log:
+[Configuration]:
+	Max. Std. of Measurement Noise: 1
+	Stepsize of Measurement Noise Std. Change: 0.05
+	Start Frame ID of Sliding Window: 1
+	Output Directory: .
+
+The evaluation results is available at ./evaluation-results.csv
+```
+
+Below is the visualization of evaluation result. The annotation is the `log of required singular value ratio`.
+
+<img src="doc/01-triangulation/quality-ratio.png" alt="Triangulation Quality Evaluation" width="%100">
+
+From the graph we can see:
+
+* When `measurement noise is small`(top-left corner), `larger sliding window size` can generate better triangulation estimation.
+* As `measurement noise increases`, `smaller sliding window size` can generate better triangulation estimation(bottom-right corner).

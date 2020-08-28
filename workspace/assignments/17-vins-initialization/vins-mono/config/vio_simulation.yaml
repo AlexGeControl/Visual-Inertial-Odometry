@@ -56,21 +56,26 @@ max_num_iterations: 8   # max solver itrations, to guarantee real time
 keyframe_parallax: 10.0 # keyframe selection threshold (pixel)
 
 #imu parameters   The more accurate parameters you provide, the better performance
+# noise-free:
+acc_n: 0.2687       # acc_noise_sigma * sqrt(1.0/imu_frequency).
+gyr_n: 0.2121       # gyro_noise_sigma * sqrt(1.0/imu_frequency).     
+acc_w: 7.07e-6      # acc_bias_sigma / sqrt(1.0/imu_frequency).
+gyr_w: 7.07e-7      # gyro_bias_sigma / sqrt(1.0/imu_frequency).
 # a. proper noise level:
-#acc_n: 0.019      # accelerometer measurement noise standard deviation. #0.2   0.04
-#gyr_n: 0.015      # gyroscope measurement noise standard deviation.     #0.05  0.004
-#acc_w: 0.0001     # accelerometer bias random work noise standard deviation.  #0.02
-#gyr_w: 1.0e-5     # gyroscope bias random work noise standard deviation.     #4.0e-5
+# acc_n: 0.2687       # acc_noise_sigma * sqrt(1.0/imu_frequency).
+# gyr_n: 0.2121       # gyro_noise_sigma * sqrt(1.0/imu_frequency).     
+# acc_w: 7.07e-6      # acc_bias_sigma / sqrt(1.0/imu_frequency).
+# gyr_w: 7.07e-7      # gyro_bias_sigma / sqrt(1.0/imu_frequency).
 # b. under-estimate:
-#acc_n: 0.0038      # accelerometer measurement noise standard deviation. #0.2   0.04
-#gyr_n: 0.0030      # gyroscope measurement noise standard deviation.     #0.05  0.004
-#acc_w: 2e-5        # accelerometer bias random work noise standard deviation.  #0.02
-#gyr_w: 2e-6        # gyroscope bias random work noise standard deviation.     #4.0e-5
+# acc_n: 0.08956      # 0.333 * acc_noise_sigma * sqrt(1.0/imu_frequency).
+# gyr_n: 0.07071      # 0.333 * gyro_noise_sigma * sqrt(1.0/imu_frequency).     
+# acc_w: 2.357e-6     # 0.333 * acc_bias_sigma / sqrt(1.0/imu_frequency).
+# gyr_w: 2.357e-7     # 0.333 * gyro_bias_sigma / sqrt(1.0/imu_frequency).
 # c. over-estimate:
-acc_n: 0.095      # accelerometer measurement noise standard deviation. #0.2   0.04
-gyr_n: 0.075      # gyroscope measurement noise standard deviation.     #0.05  0.004
-acc_w: 0.0005     # accelerometer bias random work noise standard deviation.  #0.02
-gyr_w: 5.0e-5     # gyroscope bias random work noise standard deviation.     #4.0e-5
+# acc_n: 0.8061       # 3.0 * acc_noise_sigma * sqrt(1.0/imu_frequency).
+# gyr_n: 0.6364       # 3.0 * gyro_noise_sigma * sqrt(1.0/imu_frequency).     
+# acc_w: 2.121e-5     # 3.0 * acc_bias_sigma / sqrt(1.0/imu_frequency).
+# gyr_w: 2.121e-6     # 3.0 * gyro_bias_sigma / sqrt(1.0/imu_frequency).
 g_norm: 9.81      # gravity magnitude
 
 #loop closure parameters

@@ -79,7 +79,7 @@ void CreatePointsLines(Points& points, Lines& lines)
     }
 
     // save points
-    save_points("all_points.txt", points);
+    SavePoints("all_points.txt", points);
 }
 
 int main(){
@@ -130,14 +130,14 @@ int main(){
     imuGen.init_velocity_ = imudata[0].imu_velocity;
     imuGen.init_twb_ = imudata.at(0).twb;
     imuGen.init_Rwb_ = imudata.at(0).Rwb;
-    save_Pose("imu_pose.txt", imudata);
-    save_Pose("imu_pose_noise.txt", imudata_noise);
+    SavePose("imu_pose.txt", imudata);
+    SavePose("imu_pose_noise.txt", imudata_noise);
 
     imuGen.testImu("imu_pose.txt", "imu_int_pose.txt");     // test the imu data, integrate the imu data to generate the imu trajecotry
     imuGen.testImu("imu_pose_noise.txt", "imu_int_pose_noise.txt");
 
     // cam pose
-    std::vector< MotionData > camdata;
+    std::vector<MotionData> camdata;
     for (float t = params.t_start; t<params.t_end;) {
 
         MotionData imu = imuGen.MotionModel(t);   // imu body frame to world frame motion
@@ -150,8 +150,13 @@ int main(){
         camdata.push_back(cam);
         t += 1.0/params.cam_frequency;
     }
-    save_Pose("cam_pose.txt",camdata);
-    save_Pose_asTUM("cam_pose_tum.txt",camdata);
+    SavePose("cam_pose.txt",camdata);
+
+    std::vector<MotionData> camdata_readback;
+    LoadPose("cam_pose.txt",camdata_readback);
+    SavePose("cam_pose_check.txt",camdata_readback);
+
+    SavePoseTUM("cam_pose_tum.txt",camdata);
 
     // points obs in image
     for(int n = 0; n < camdata.size(); ++n)
@@ -183,7 +188,7 @@ int main(){
         // save points
         std::stringstream filename1;
         filename1<<"keyframe/all_points_"<<n<<".txt";
-        save_features(filename1.str(),points_cam,features_cam);
+        SaveFeatures(filename1.str(),points_cam,features_cam);
     }
 
     // lines obs in image
@@ -216,7 +221,7 @@ int main(){
         // save points
         std::stringstream filename1;
         filename1<<"keyframe/all_lines_"<<n<<".txt";
-        save_lines(filename1.str(),features_cam);
+        SaveLines(filename1.str(),features_cam);
     }
 
     return 0;

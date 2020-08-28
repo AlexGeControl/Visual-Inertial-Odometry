@@ -10,8 +10,11 @@ add_definitions(-std=c++11)
 ## dependencies ##
 ################################################
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake_modules)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 find_package(Boost REQUIRED)
+find_package(Threads REQUIRED)
+
 # a. OpenCV3:
 find_package(OpenCV 3.4 REQUIRED)
 # b. Eigen 3:
@@ -53,6 +56,7 @@ add_library(${PROJECT_NAME}_lib
     src/utilities.cpp
 )
 target_link_libraries(${PROJECT_NAME}_lib
+    Threads::Threads
     ${EIGEN3_LIBS}
     ${SOPHUS_LIBS}
     ${OpenCV_LIBS}

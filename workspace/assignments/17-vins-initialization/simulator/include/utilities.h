@@ -1,7 +1,3 @@
-//
-// Created by hyj on 18-1-19.
-//
-
 #ifndef IMUSIMWITHPOINTLINE_UTILITIES_H
 #define IMUSIMWITHPOINTLINE_UTILITIES_H
 
@@ -12,26 +8,42 @@
 #include <vector>
 #include <fstream>
 
-// save 3d points to file
-void save_points(std::string filename, std::vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> > points);
+// save 3D points in homogeneous coordinates as CSV:
+void SavePoints(
+    const std::string &filename, 
+    const std::vector<Eigen::Vector4d,Eigen::aligned_allocator<Eigen::Vector4d>> &points
+);
 
-// save 3d points and it's obs in image
-void save_features(std::string filename,
-                   std::vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> > points,
-                   std::vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d> > features);
+// save 3d points and corresponding observation(in normalized plane):
+void SaveFeatures(
+    const std::string &filename,
+    const std::vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d>> &points,
+    const std::vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d>> &features
+);
 
-// save line obs
-void save_lines(std::string filename,
-                std::vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> > features);
+// save line observations(in normalized plane):
+void SaveLines(
+    const std::string &filename,
+    const std::vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d>> &features
+);
 
 
-void LoadPose(std::string filename, std::vector<MotionData>& pose);
+void LoadPose(
+    const std::string &filename, 
+    std::vector<MotionData>& poses
+);
 
-// save imu body data
-void save_Pose(std::string filename, std::vector<MotionData> pose);
+// save poses with IMU measurements:
+void SavePose(
+    const std::string &filename, 
+    const std::vector<MotionData> &poses
+);
 
-// save pose as TUM style
-void save_Pose_asTUM(std::string filename, std::vector<MotionData> pose);
+// save pose in TUM format:
+void SavePoseTUM(
+    const std::string &filename, 
+    const std::vector<MotionData> &poses
+);
 
 #endif //IMUSIMWITHPOINTLINE_UTILITIES_H
 

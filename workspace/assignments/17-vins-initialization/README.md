@@ -173,7 +173,7 @@ The results are as follows. From the visualization we can conclude that **the VI
 
 Noise Level                |APE                        |Error on Trajectory        
 :-------------------------:|:-------------------------:|:-------------------------:
-Noise Free                 |![APE](doc/noise-free/ape.png)|![APE](doc/noise-free/error-on-trajectory.png)
+Noise Free                 |![APE](doc/noise-free/ape.png)|![Traj. Visualization](doc/noise-free/error-on-trajectory.png)
 
 ---
 
@@ -220,9 +220,16 @@ The results are as follows.
 
 Noise Level                |APE                        |Error on Trajectory        
 :-------------------------:|:-------------------------:|:-------------------------:
-Proper                    |![APE](doc/with-noise/proper-prior/ape.png)|![APE](doc/with-noise/proper-prior/error-on-trajectory.png)
-Underestimate             |![APE](doc/with-noise/underestimate/ape.png)|![APE](doc/with-noise/underestimate/error-on-trajectory.png)
-Overestimate              |![APE](doc/with-noise/overestimate/ape.png)|![APE](doc/with-noise/overestimate/error-on-trajectory.png)
+Proper                    |![APE](doc/with-noise/proper-prior/ape.png)|![Traj. Visualization](doc/with-noise/proper-prior/error-on-trajectory.png)
+Underestimate             |![APE](doc/with-noise/underestimate/ape.png)|![Traj. Visualization](doc/with-noise/underestimate/error-on-trajectory.png)
+Overestimate              |![APE](doc/with-noise/overestimate/ape.png)|![Traj. Visualization](doc/with-noise/overestimate/error-on-trajectory.png)
+
+
+The comparison between the above 3 configurations are visualized as follows:
+
+APE                        |Summary                    |Distribution        
+:-------------------------:|:-------------------------:|:-------------------------:
+![APE](doc/with-noise/comparison/ape.png)|![Summary](doc/with-noise/comparison/stats.png)|![Distribution](doc/with-noise/comparison/boxplot.png)
 
 From the visualization we can conclude that:
 

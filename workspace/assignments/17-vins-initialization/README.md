@@ -103,7 +103,7 @@ The results are as follows.
 Noise Level                |APE                        |Error on Trajectory        
 :-------------------------:|:-------------------------:|:-------------------------:
 Proper                    |![APE](doc/with-noise/proper-prior/ape.png)|![APE](doc/with-noise/proper-prior/error-on-trajectory.png)
-Underestimate             |![APE](doc/with-noise/proper-prior/ape.png)|![APE](doc/with-noise/proper-prior/error-on-trajectory.png)
+Underestimate             |![APE](doc/with-noise/underestimate/ape.png)|![APE](doc/with-noise/underestimate/error-on-trajectory.png)
 Overestimate              |![APE](doc/with-noise/proper-prior/ape.png)|![APE](doc/with-noise/proper-prior/error-on-trajectory.png)
 
 ---

@@ -19,6 +19,11 @@
 
 
 //imu for vio
+struct IMUMeasurement {
+    double timestamp;
+    Eigen::Vector3d gyr;
+    Eigen::Vector3d acc;
+};
 struct IMU_MSG
 {
     double header;
@@ -27,7 +32,17 @@ struct IMU_MSG
 };
 typedef std::shared_ptr<IMU_MSG const> ImuConstPtr;
 
-//image for vio    
+//image for vio  
+struct Landmark {
+    int id;
+    Eigen::Vector2d p_normalized;
+    Eigen::Vector2d p_image;
+};
+struct KeyFrame {
+    double timestamp;
+    std::vector<Landmark> landmarks;
+};
+
 struct IMG_MSG {
     double header;
     vector<Vector3d> points;
@@ -46,10 +61,14 @@ public:
 
     ~System();
 
-    void PubImageData(double dStampSec, cv::Mat &img);
+    void PubImuData(
+        double dStampSec, 
+        const Eigen::Vector3d &vGyr, 
+        const Eigen::Vector3d &vAcc
+    );
 
-    void PubImuData(double dStampSec, const Eigen::Vector3d &vGyr, 
-        const Eigen::Vector3d &vAcc);
+    void PubImageData(double dStampSec, const KeyFrame &keyframe);
+    void PubImageData(double dStampSec, cv::Mat &img);
 
     // thread: visual-inertial odometry
     void ProcessBackEnd();
@@ -105,7 +124,7 @@ private:
     Eigen::Vector3d gyr_0;
     bool init_feature = 0;
     bool init_imu = 1;
-    double last_imu_t = 0;
+    double last_imu_t = -1.0;
     std::ofstream ofs_pose;
     std::vector<Eigen::Vector3d> vPath_to_draw;
     bool bStart_backend;

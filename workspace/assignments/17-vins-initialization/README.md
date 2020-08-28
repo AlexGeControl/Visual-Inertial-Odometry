@@ -19,79 +19,91 @@ Run `VINS` on `Simulation Data (with mono-camera observations and IMU observatio
 
 ## Solutions
 
+In order to run `Shenlan VINS` on `Simulation Data (with mono-camera observations and IMU observations)`, change the following configurations. The full configuration file is available at [here](vins-mono/config/vio_simulation.yaml)
+
+```yaml
+# camera model: 
+model_type: PINHOLE
+camera_name: camera
+image_width: 640
+image_height: 640
+distortion_parameters:
+   k1: 0.0
+   k2: 0.0
+   p1: 0.0
+   p2: 0.0
+projection_parameters:
+   fx: 460.0
+   fy: 460.0
+   cx: 255.0
+   cy: 255.0
+
+# extrinsic parameters from camera to IMU(body):
+# a. orientation, R_bc:
+extrinsicRotation: !!opencv-matrix
+   rows: 3
+   cols: 3
+   dt: d
+   data: [ 0.0, 0.0, -1.0,
+          -1.0, 0.0,  0.0, 
+           0.0, 1.0,  0.0]
+# b. position, T_bc
+extrinsicTranslation: !!opencv-matrix
+   rows: 3
+   cols: 1
+   dt: d
+   data: [0.05, 0.04, 0.03]
+
+# visual frontend publish rate, match that from vio simulation
+freq: 30                
+```
+
 ---
 
 ### 1. Data with No Measurement Noise
 ### 1. 仿真数据集无噪声
+
+Run the following command to reproduce the analysis on `noise-free IMU measurements`:
+
+```bash
+# go to workspace:
+cd /workspace/assignments/17-vins-initialization/doc/noise-free
+# run analysis:
+evo_ape tum ground-truth.txt vins-estimation.txt -va --plot --plot_mode xy --save_results results.zip
+```
+
+The results are as follows. From the visualization we can conclude that **the VINS is functionally correct**. That is, **it can give correct trajectory estimation given raw IMU and camera measurements**.
+
+Noise Level                |APE                        |Error on Trajectory        
+:-------------------------:|:-------------------------:|:-------------------------:
+Noise Free                 |![APE](doc/noise-free/ape.png)|![APE](doc/noise-free/error-on-trajectory.png)
 
 ---
 
 ### 2. Data with Measurement Noise
 ### 2. 仿真数据集有噪声
 
+To analyze `measurement noise's impace on trajectory estimation`, the following three experiments will be performed:
+
+* `Noise Level Proper` VINS uses the same noise parameters as VIO simulation
+* `Noise Level Underestimate` VINS noise level is 5 times smaller than that used by VIO simulation
+* `Noise Level Overestimate` VINS noise level is 5 times larger than that used by VIO simulation
+
+Run the following command to reproduce the analysis on `IMU measurements with noise`. Here use `Noise Level Proper` as example:
+
+```bash
+# go to workspace:
+cd /workspace/assignments/17-vins-initialization/doc/with-noise/proper-prior
+# run analysis:
+evo_ape tum ground-truth.txt vins-estimation.txt -va --plot --plot_mode xy --save_results results.zip
+```
+
+The results are as follows.
+
+Noise Level                |APE                        |Error on Trajectory        
+:-------------------------:|:-------------------------:|:-------------------------:
+Proper                    |![APE](doc/with-noise/proper-prior/ape.png)|![APE](doc/with-noise/proper-prior/error-on-trajectory.png)
+Underestimate             |![APE](doc/with-noise/proper-prior/ape.png)|![APE](doc/with-noise/proper-prior/error-on-trajectory.png)
+Overestimate              |![APE](doc/with-noise/proper-prior/ape.png)|![APE](doc/with-noise/proper-prior/error-on-trajectory.png)
+
 ---
-
-
-# Vins Course
-**作者**：贺一家，高翔，崔华坤，赵松
-
-**描述**：
-这是一个用于深蓝学院教学的代码，她基于 VINS-Mono 框架，但不依赖 ROS, Ceres, G2o。这个代码非常基础，目的在于演示仅基于 Eigen 的后端 LM 算法，滑动窗口算法，鲁棒核函数等等 SLAM 优化中常见的算法。
-该代码支持 Ubuntu or Mac OS.
-
-### 安装依赖项：
-
-1. pangolin: <https://github.com/stevenlovegrove/Pangolin>
-
-2. opencv
-
-3. Eigen
-
-4. Ceres: vins 初始化部分使用了 ceres 做 sfm，所以我们还是需要依赖 ceres. 
-
-### 编译代码
-
-```c++
-mkdir vins_course
-cd vins_course
-git clone https://github.com/HeYijia/VINS-Course
-mkdir build 
-cd build
-cmake ..
-make -j4
-```
-
-### 运行
-#### 1. CurveFitting Example to Verify Our Solver.
-```c++
-cd build
-../bin/testCurveFitting 
-```
-
-#### 2. VINs-Mono on Euroc Dataset
-```c++
-cd build
-../bin/run_euroc /home/dataset/EuRoC/MH-05/mav0/ ../config/
-```
-![vins](doc/vins.gif)
-
-#### 3. VINs-Mono on Simulation Dataset (project homework)
-
-you can use this code to generate vio data.
-
-```c++
-https://github.com/HeYijia/vio_data_simulation
-```
-
-### Licence
-
-The source code is released under GPLv3 license.
-
-We are still working on improving the code reliability. For any technical issues, please contact Yijia He <heyijia_2013@163.com> , Xiang Gao <https://github.com/gaoxiang12> or Huakun Cui<https://github.com/StevenCui>.
-
-For commercial inquiries, please contact Song Zhao <zhaosong@shenlanxueyuan.com>
-
-### 感谢
-
-我们使用了港科大沈老师组的 [VINS-Mono](https://github.com/HKUST-Aerial-Robotics/VINS-Mono) 作为基础代码，非常感谢该组的工作。
-

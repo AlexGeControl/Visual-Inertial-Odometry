@@ -9,7 +9,7 @@ using namespace pangolin;
 System::System(string sConfig_file_)
     :bStart_backend(true)
 {
-    string sConfig_file = sConfig_file_ + "euroc_config.yaml";
+    string sConfig_file = sConfig_file_ + "vio_simulation.yaml";
 
     cout << "1 System() sConfig_file: " << sConfig_file << endl;
     readParameters(sConfig_file);
@@ -45,6 +45,123 @@ System::~System()
     m_estimator.unlock();
 
     ofs_pose.close();
+}
+
+void System::PubImuData(double dStampSec, const Eigen::Vector3d &vGyr, 
+    const Eigen::Vector3d &vAcc)
+{
+    shared_ptr<IMU_MSG> imu_msg(new IMU_MSG());
+	imu_msg->header = dStampSec;
+	imu_msg->linear_acceleration = vAcc;
+	imu_msg->angular_velocity = vGyr;
+
+    if (dStampSec <= last_imu_t)
+    {
+        cerr << "imu message in disorder!" << endl;
+        return;
+    }
+    last_imu_t = dStampSec;
+    // cout << "1 PubImuData t: " << fixed << imu_msg->header
+    //     << " acc: " << imu_msg->linear_acceleration.transpose()
+    //     << " gyr: " << imu_msg->angular_velocity.transpose() << endl;
+    m_buf.lock();
+    imu_buf.push(imu_msg);
+    // cout << "1 PubImuData t: " << fixed << imu_msg->header 
+    //     << " imu_buf size:" << imu_buf.size() << endl;
+    m_buf.unlock();
+    con.notify_one();
+}
+
+void System::PubImageData(double dStampSec, const KeyFrame &keyframe)
+{
+    if (!init_feature)
+    {
+        cout << "1 PubImageData skip the first detected feature, which doesn't contain optical flow speed" << endl;
+        init_feature = 1;
+        return;
+    }
+
+    if (first_image_flag)
+    {
+        cout << "2 PubImageData first_image_flag" << endl;
+        first_image_flag = false;
+        first_image_time = dStampSec;
+        last_image_time = dStampSec;
+        return;
+    }
+    // detect unstable camera stream
+    if (dStampSec - last_image_time > 1.0 || dStampSec < last_image_time)
+    {
+        cerr << "3 PubImageData image discontinue! reset the feature tracker!" << endl;
+        first_image_flag = true;
+        last_image_time = 0;
+        pub_count = 1;
+        return;
+    }
+    last_image_time = dStampSec;
+    // frequency control
+    if (round(1.0 * pub_count / (dStampSec - first_image_time)) <= FREQ)
+    {
+        PUB_THIS_FRAME = true;
+        // reset the frequency control
+        if (abs(1.0 * pub_count / (dStampSec - first_image_time) - FREQ) < 0.01 * FREQ)
+        {
+            first_image_time = dStampSec;
+            pub_count = 0;
+        }
+    }
+    else
+    {
+        PUB_THIS_FRAME = false;
+    }
+
+    if (PUB_THIS_FRAME)
+    {
+        pub_count++;
+        shared_ptr<IMG_MSG> feature_points(new IMG_MSG());
+        feature_points->header = dStampSec;
+        vector<set<int>> hash_ids(NUM_OF_CAM);
+        for (int i = 0; i < NUM_OF_CAM; i++)
+        {
+            for (size_t j = 0; j < keyframe.landmarks.size(); ++j) {
+                int p_id = keyframe.landmarks.at(j).id;
+
+                double x = keyframe.landmarks.at(j).p_normalized.x();
+                double y = keyframe.landmarks.at(j).p_normalized.y();
+                double z = 1.0;
+
+                Eigen::Vector3d P_world = Vector3d(x, y, z);
+                const Eigen::Vector2d &p_image = keyframe.landmarks.at(j).p_image;
+
+                hash_ids.at(i).insert(p_id);
+
+                feature_points->id_of_point.push_back(p_id * NUM_OF_CAM + i);
+
+                feature_points->points.push_back(P_world);
+                
+                feature_points->u_of_point.push_back(p_image.x());
+                feature_points->v_of_point.push_back(p_image.y());
+                // TODO: fix landmark velocity estimation for vio simulation
+                feature_points->velocity_x_of_point.push_back(0.0);
+                feature_points->velocity_y_of_point.push_back(0.0);
+        }
+            // skip the first image; since no optical speed on frist image
+            if (!init_pub)
+            {
+                cout << "4 PubImage init_pub skip the first image!" << endl;
+                init_pub = 1;
+            }
+            else
+            {
+                m_buf.lock();
+                feature_buf.push(feature_points);
+                // cout << "5 PubImage t : " << fixed << feature_points->header
+                //     << " feature_buf size: " << feature_buf.size() << endl;
+                m_buf.unlock();
+                con.notify_one();
+            }
+        }
+    }
 }
 
 void System::PubImageData(double dStampSec, Mat &img)
@@ -167,7 +284,6 @@ void System::PubImageData(double dStampSec, Mat &img)
 	}
 #endif    
     // cout << "5 PubImage" << endl;
-    
 }
 
 vector<pair<vector<ImuConstPtr>, ImgConstPtr>> System::getMeasurements()
@@ -217,31 +333,6 @@ vector<pair<vector<ImuConstPtr>, ImgConstPtr>> System::getMeasurements()
         measurements.emplace_back(IMUs, img_msg);
     }
     return measurements;
-}
-
-void System::PubImuData(double dStampSec, const Eigen::Vector3d &vGyr, 
-    const Eigen::Vector3d &vAcc)
-{
-    shared_ptr<IMU_MSG> imu_msg(new IMU_MSG());
-	imu_msg->header = dStampSec;
-	imu_msg->linear_acceleration = vAcc;
-	imu_msg->angular_velocity = vGyr;
-
-    if (dStampSec <= last_imu_t)
-    {
-        cerr << "imu message in disorder!" << endl;
-        return;
-    }
-    last_imu_t = dStampSec;
-    // cout << "1 PubImuData t: " << fixed << imu_msg->header
-    //     << " acc: " << imu_msg->linear_acceleration.transpose()
-    //     << " gyr: " << imu_msg->angular_velocity.transpose() << endl;
-    m_buf.lock();
-    imu_buf.push(imu_msg);
-    // cout << "1 PubImuData t: " << fixed << imu_msg->header 
-    //     << " imu_buf size:" << imu_buf.size() << endl;
-    m_buf.unlock();
-    con.notify_one();
 }
 
 // thread: visual-inertial odometry

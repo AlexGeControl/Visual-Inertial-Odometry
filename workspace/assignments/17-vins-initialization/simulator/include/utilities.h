@@ -15,10 +15,16 @@ void SavePoints(
 );
 
 // save 3d points and corresponding observation(in normalized plane):
+struct Feature {
+    double timestamp;
+    size_t id;
+    Eigen::Vector4d P_world;
+    Eigen::Vector2d p_normalized; 
+    Eigen::Vector2d p_image;
+};
 void SaveFeatures(
     const std::string &filename,
-    const std::vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d>> &points,
-    const std::vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d>> &features
+    const std::vector<Feature> &features
 );
 
 // save line observations(in normalized plane):

@@ -389,7 +389,7 @@ bool Estimator::visualInitialAlign()
     bool result = VisualIMUAlignment(all_image_frame, Bgs, g, x);
     if (!result)
     {
-        //ROS_DEBUG("solve g failed!");
+        std::cout << "solve g failed!" << std::endl;
         return false;
     }
 
@@ -453,8 +453,8 @@ bool Estimator::visualInitialAlign()
         Rs[i] = rot_diff * Rs[i];
         Vs[i] = rot_diff * Vs[i];
     }
-    //ROS_DEBUG_STREAM("g0     " << g.transpose());
-    //ROS_DEBUG_STREAM("my R0  " << Utility::R2ypr(Rs[0]).transpose());
+    std::cout << "g0     " << g.transpose() << std::endl;
+    std::cout << "my R0  " << Utility::R2ypr(Rs[0]).transpose() << std::endl;
 
     return true;
 }

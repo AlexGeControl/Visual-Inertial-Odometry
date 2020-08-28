@@ -131,6 +131,7 @@ int main(){
     imuGen.init_twb_ = imudata.at(0).twb;
     imuGen.init_Rwb_ = imudata.at(0).Rwb;
     SavePose("imu_pose.txt", imudata);
+    SavePoseTUM("imu_pose_tum.txt", imudata);
     SavePose("imu_pose_noise.txt", imudata_noise);
 
     imuGen.testImu("imu_pose.txt", "imu_int_pose.txt");     // test the imu data, integrate the imu data to generate the imu trajecotry
@@ -150,12 +151,8 @@ int main(){
         camdata.push_back(cam);
         t += 1.0/params.cam_frequency;
     }
+    
     SavePose("cam_pose.txt",camdata);
-
-    std::vector<MotionData> camdata_readback;
-    LoadPose("cam_pose.txt",camdata_readback);
-    SavePose("cam_pose_check.txt",camdata_readback);
-
     SavePoseTUM("cam_pose_tum.txt",camdata);
 
     // points obs in image
@@ -167,28 +164,44 @@ int main(){
         Twc.block(0, 3, 3, 1) = data.twb;
 
         // 遍历所有的特征点，看哪些特征点在视野里
-        std::vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> > points_cam;    // ３维点在当前cam视野里
-        std::vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d> > features_cam;  // 对应的２维图像坐标
-        for (int i = 0; i < points.size(); ++i) {
+        std::vector<Feature> features;
+        for (size_t i = 0; i < points.size(); ++i) {
             Eigen::Vector4d pw = points[i];          // 最后一位存着feature id
-            pw[3] = 1;                               //改成齐次坐标最后一位
-            Eigen::Vector4d pc1 = Twc.inverse() * pw; // T_wc.inverse() * Pw  -- > point in cam frame
+            pw[3] = 1.0;                             // 改成齐次坐标最后一位
+            Eigen::Vector4d pc = Twc.inverse() * pw; // T_wc.inverse() * Pw  -- > point in cam frame
 
-            if(pc1(2) < 0) continue; // z必须大于０,在摄像机坐标系前方
+            if(pc(2) < 0) continue; // z必须大于０,在摄像机坐标系前方
 
-            Eigen::Vector2d obs(pc1(0)/pc1(2), pc1(1)/pc1(2)) ;
-            // if( (obs(0)*460 + 255) < params.image_h && ( obs(0) * 460 + 255) > 0 &&
-                   // (obs(1)*460 + 255) > 0 && ( obs(1)* 460 + 255) < params.image_w )
-            {
-                points_cam.push_back(points[i]);
-                features_cam.push_back(obs);
+            Eigen::Vector2d po(pc(0)/pc(2), pc(1)/pc(2));
+
+            Eigen::Vector2d pi(
+                params.fx*po.x() + params.cx,
+                params.fy*po.y() + params.cy
+            );
+
+            if ( 
+                (0 < pi.x() && pi.x() < params.image_w) &&
+                (0 < pi.y() && pi.y() < params.image_h) 
+            ) {
+                Feature feature;
+
+                feature.timestamp = data.timestamp;
+                feature.id = i;
+                feature.P_world = pw;
+                feature.p_normalized = po;
+                feature.p_image = pi;
+
+                features.push_back(feature);
             }
         }
 
         // save points
         std::stringstream filename1;
         filename1<<"keyframe/all_points_"<<n<<".txt";
-        SaveFeatures(filename1.str(),points_cam,features_cam);
+        SaveFeatures(
+            filename1.str(),
+            features
+        );
     }
 
     // lines obs in image

@@ -15,7 +15,7 @@ double GYR_N, GYR_W;
 vector<Eigen::Matrix3d> RIC;
 vector<Eigen::Vector3d> TIC;
 
-Eigen::Vector3d G{0.0, 0.0, 9.8};
+Eigen::Vector3d G{0.0, 0.0, 9.81};
 
 double BIAS_ACC_THRESHOLD;
 double BIAS_GYR_THRESHOLD;
@@ -118,10 +118,9 @@ void readParameters(string config_file)
         eigen_R = Q.normalized();
         RIC.push_back(eigen_R);
         TIC.push_back(eigen_T);
-        // ROS_INFO_STREAM("Extrinsic_R : " << endl
-        //                                  << RIC[0]);
-        // ROS_INFO_STREAM("Extrinsic_T : " << endl
-        //                                  << TIC[0].transpose());
+        
+        std::cout << "Extrinsic_R : " << eigen_R << std::endl;
+        std::cout << "Extrinsic_T : " << eigen_T.transpose() << std::endl;
     }
 
     INIT_DEPTH = 5.0;

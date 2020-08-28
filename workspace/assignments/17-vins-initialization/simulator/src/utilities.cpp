@@ -31,33 +31,36 @@ void SavePoints(
 
 void SaveFeatures(
     const std::string &filename,
-    const std::vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d>> &points,
-    const std::vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d>> &features
+    const std::vector<Feature> &features
 ) {
     // init writer:
     CSVWriter csv(",");
-    csv.enableAutoNewRow(6);
+    csv.enableAutoNewRow(10);
 
     // write header:
-    csv << "x" 
+    csv << "timestamp"
+        << "id"
+        << "x" 
         << "y" 
         << "z" 
         << "lambda"
         << "x_normalized"
-        << "y_normalized";
+        << "y_normalized"
+        << "u"
+        << "v";
     
     // write landmark position and corresponding observation in normalized plane:
-    const size_t N = points.size();
-    for (size_t i = 0; i < N; ++i) {
-        const Eigen::Vector4d &p = points.at(i);
-        const Eigen::Vector2d &f = features.at(i);
-
-        csv << p(0)
-            << p(1)
-            << p(2)
-            << p(3)
-            << f(0)
-            << f(1);
+    for (const Feature &f: features) {
+        csv << f.timestamp
+            << f.id
+            << f.P_world(0)
+            << f.P_world(1)
+            << f.P_world(2)
+            << f.P_world(3)
+            << f.p_normalized(0)
+            << f.p_normalized(1)
+            << f.p_image(0)
+            << f.p_image(1);
     }
 
     // save to persistent storage:

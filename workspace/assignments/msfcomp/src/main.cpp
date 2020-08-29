@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
             const std::vector<std::string> &input_files = vm["input_files"].as<std::vector<std::string>>();
             const std::vector<std::string> &ignore_keys = vm["ignore_key"].as<std::vector<std::string>>();
 
-            std::cout << "msfcomp:" << std::endl;
+            std::cout << "Command-Line Arguments:" << std::endl;
 
             std::cout << "\tinput_files: " << std::endl;
             for (size_t i = 0; i < input_files.size(); ++i) {
@@ -78,6 +78,9 @@ int main(int argc, char *argv[]) {
             ) {
                 std::cerr << "Invalid content. Please check your input format." << std::endl;
                 return EXIT_FAILURE; 
+            } else {
+                // perform compare:
+                source.Compare(target);
             }
         }
     }

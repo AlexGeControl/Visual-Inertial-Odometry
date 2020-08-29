@@ -2,9 +2,9 @@ cmake_minimum_required(VERSION 3.10.2)
 
 project(msfcomp)
 
-## Compile as C++14
+## Compile as C++17
 set(CMAKE_BUILD_TYPE "Release")
-set(CMAKE_CXX_FLAGS "-std=c++11")
+set(CMAKE_CXX_FLAGS "-std=c++17")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g")
 
 ################################################
@@ -31,9 +31,19 @@ include_directories(
   ${PROJECT_SOURCE_DIR}/include
 )
 
+## Declare a C++ library
+add_library(${PROJECT_NAME}_lib
+    src/record.cpp
+)
+target_link_libraries(${PROJECT_NAME}_lib 
+  ${Boost_LIBRARIES}
+  Threads::Threads
+)
+
 ## Declare a C++ executable
 add_executable(${PROJECT_NAME} src/main.cpp)
 target_link_libraries(${PROJECT_NAME} 
+  ${PROJECT_NAME}_lib
   ${Boost_LIBRARIES}
   Threads::Threads
 )

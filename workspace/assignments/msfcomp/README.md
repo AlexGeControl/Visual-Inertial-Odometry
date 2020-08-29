@@ -12,7 +12,7 @@ Use the following commands to build the solution
 # build solution:
 mkdir build && cd build && cmake .. && make -j2
 # run on test data:
-./msfcomp --timestamp 123 --ignore_key id ../data/A.txt ../data/B.txt
+./msfcomp ../data/A.txt ../data/B.txt --timestamp 123 --ignore_key d vwpvs
 ```
 
 The sample output for Q1 is shown below:

@@ -40,9 +40,9 @@ int main(int argc, char *argv[]) {
             ("help,h", "Show help info")
             ("input_files", po::value<std::vector<std::string>>(), "Input files")
             ("timestamp,t",  po::value<int>(&timestamp), "Time reference")
-            ("ignore_key,i", po::value<std::vector<std::string>>(), "Exclude the listed keys from comparison");
+            ("ignore_key,i", po::value<std::vector<std::string>>()->multitoken(), "Exclude the listed keys from comparison");
         po::positional_options_description pos;
-        pos.add("input_files", -1);
+        pos.add("input_files", 2);
 
         po::variables_map vm;
         po::store(
@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
                 return EXIT_FAILURE; 
             } else {
                 // perform compare:
-                source.Compare(target);
+                source.Compare(target, ignore_keys);
             }
         }
     }

@@ -3,6 +3,8 @@
 #include <iostream>
 #include <sstream>
 
+#include <set>
+
 #include <boost/regex.hpp>
 
 namespace msfcomp {
@@ -38,7 +40,13 @@ bool Record::Load(const std::string &content) {
     return false;
 }
 
-void Record::Compare(Record &record) {
+void Record::Compare(Record &record, const std::vector<std::string> &ignore_keys) {
+    // init ignore key set:
+    std::set<std::string> ignore_key_set;
+    for (const std::string &ignore_key: ignore_keys) {
+        ignore_key_set.insert(ignore_key);
+    }
+
     // summary output:
     std::vector<std::string> ok, error;
 
@@ -54,7 +62,17 @@ void Record::Compare(Record &record) {
     for (const auto &field: fields_) {
         // identify field:
         const std::string &key = field.first;
+
+        if (!key.compare("id")) {
+            continue;
+        }
+
         const std::string field_name = key.substr(1, std::string::npos);
+
+        // skip keys in ignore key set:
+        if (ignore_key_set.find(field_name) != ignore_key_set.end()) {
+            continue;
+        }
 
         if (record.fields_.find(key) != record.fields_.end()) {
             // extract values:

@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
                 return EXIT_FAILURE; 
             } else {
                 // perform compare:
-                source.Compare(target, ignore_keys);
+                source.Compare(target, timestamp, ignore_keys);
             }
         }
     }

@@ -11,7 +11,7 @@ namespace msfcomp {
     public:
         Record(void) {}
         bool Load(const std::string &content);
-        void Compare(Record &record, const std::vector<std::string> &ignore_keys);
+        void Compare(Record &record, const int &timestamp, const std::vector<std::string> &ignore_keys);
 
         inline static const std::string CONTENT_FORMAT = "^id\\s(\\w+)\\s(\\/\\w+\\s(\\w+|-*?\\d+|-*?\\d+\\.\\d+)\\s)+\\/;$";
         inline static const std::string KEY_VALUE_FORMAT = "(id|\\/\\w+)\\s(\\w+|-*?\\d+|-*?\\d+\\.\\d+)\\s";

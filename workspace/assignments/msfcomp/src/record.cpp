@@ -3,11 +3,25 @@
 #include <iostream>
 #include <sstream>
 
+#include <ctime>
+#include <locale>
+
 #include <set>
 
+#include <boost/lexical_cast.hpp>
 #include <boost/regex.hpp>
 
 namespace msfcomp {
+
+void FormatTime(const double &epoch_time, char* time_output) {
+    // std::locale::global(std::locale("ja_JP.utf8"));
+    std::time_t t = static_cast<int>(epoch_time);
+    struct tm * timeinfo = std::localtime(&t);
+
+    if (std::strftime(time_output, 64, "%H:%M:%S", timeinfo)) {
+        std::cout << time_output << std::endl;;
+    }
+}
 
 bool Record::Load(const std::string &content) {
     boost::regex regex_content(CONTENT_FORMAT);
@@ -40,7 +54,7 @@ bool Record::Load(const std::string &content) {
     return false;
 }
 
-void Record::Compare(Record &record, const std::vector<std::string> &ignore_keys) {
+void Record::Compare(Record &record, const int &timestamp, const std::vector<std::string> &ignore_keys) {
     // init ignore key set:
     std::set<std::string> ignore_key_set;
     for (const std::string &ignore_key: ignore_keys) {
@@ -54,19 +68,33 @@ void Record::Compare(Record &record, const std::vector<std::string> &ignore_keys
     const std::string id = fields_.find("id")->second;
     const std::string market = fields_.find("/e")->second;
     const std::string signature = id + "." + market;
+    
+    // create timestamp:
+    const std::string &source_rcvt = fields_.find("/rcvt")->second;
+    const std::string &target_rcvt = record.fields_.find("/rcvt")->second;
+
+    char source_time[64], target_time[64];
+
+    double source_epoch_time = boost::lexical_cast<double>(source_rcvt) + timestamp;
+    double target_epoch_time = boost::lexical_cast<double>(target_rcvt) + timestamp;
+
+    FormatTime(source_epoch_time, source_time);
+    FormatTime(target_epoch_time, target_time);
 
     // output buffers:
     std::stringstream fields_ok, fields_error;
     std::stringstream details;
 
     for (const auto &field: fields_) {
-        // identify field:
+        // identify key:
         const std::string &key = field.first;
 
-        if (!key.compare("id")) {
+        // skip id and timestamp:
+        if (!key.compare("id") || !key.compare("/rcvt")) {
             continue;
         }
 
+        // identify field name:
         const std::string field_name = key.substr(1, std::string::npos);
 
         // skip keys in ignore key set:
@@ -102,7 +130,10 @@ void Record::Compare(Record &record, const std::vector<std::string> &ignore_keys
     }
 
     // display comparison results:
-    std::cout << "Summary:" << std::endl
+    std::cout << "Timestamp:" << std::endl
+              << "\tSource: " << source_time << "." << source_rcvt.substr(11, std::string::npos) << " GMT" << std::endl
+              << "\tTarget: " << target_time << "." << target_rcvt.substr(11, std::string::npos) << " GMT" << std::endl
+              << "Summary:" << std::endl
               << "\t| " << signature << " | OK | " << fields_ok.str() << "|" << std::endl
               << "\t| " << signature << " | ERROR | " << fields_error.str() << "|" << std::endl
               << "Details:" << std::endl
